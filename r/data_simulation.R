@@ -1,5 +1,5 @@
-simulate_data = function(b0 = 0.05,
-                         b1 = 0.025, 
+simulate_data = function(b0 = 0.0,
+                         b1 = 2.0, 
                          guess = 0,
                          lapse = 0,
                          vpn = 1,
@@ -22,29 +22,27 @@ simulate_data = function(b0 = 0.05,
   return(df)
 }
 
-simulate_prepost_data = function(mu = 0.05,
-                                 sigma = 0.025, 
-                                 guess = 0,
-                                 lapse = 0,
+simulate_prepost_data = function(b0 = 0.0,
+                                 b1 = 2.0, 
                                  b2 = 0.1,
                                  b3 = 0.3,
+                                 guess = 0,
+                                 lapse = 0,
                                  vpn = 1,
                                  nreps = 20,
                                  time = c("pre","post")) {
-  b0 = -mu / sigma
-  b1 = 1 / sigma
   
   df = expand_grid(
     vpn = vpn,
     time = time,
     rep = seq(1, nreps),
     stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100,
-    mu = mu,
-    sigma = sigma,
     b0 = b0,
     b1 = b1,
     b2 = b2,
     b3 = b3,
+    b1_pre = b1,
+    b1_post = b1 + b3,
     guess = guess,
     lapse = lapse
   ) %>%

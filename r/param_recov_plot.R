@@ -1,10 +1,11 @@
 plot_param_recov = function(df_chains, df_param){
   p = df_chains %>%
-    pivot_longer(cols = b0:b1, names_to = "param", values_to = "value") %>%
+    pivot_longer(cols = everything(), names_to = "param", values_to = "value") %>%
+    # arrange(c("b0", "b1_pre", "b1_post", "b1_diff")) %>%
     ggplot() +
-    stat_halfeye(mapping = aes(x = value, y = param, color = "Posterior")) +
+    stat_halfeye(mapping = aes(x = value, y = 1.5, color = "Posterior"), .width = c(.51,.93)) +
     geom_point(data = df_param,
-               mapping = aes(x = sim, y = param, color = "Simulation"), 
+               mapping = aes(x = sim, y = 1.5, color = "Simulation"), 
                shape = 124, 
                size = 8) +
     scale_color_manual(breaks = c("Simulation", "Posterior"),
@@ -16,7 +17,7 @@ plot_param_recov = function(df_chains, df_param){
           axis.ticks.y=element_blank(),
           legend.position = "bottom",
           strip.text.x = element_text(size = 15, hjust = 0)) +
-    facet_wrap(~param, ncol = 1, scales = "free_x") +
+    facet_wrap(~param, ncol = 1, scales = "free") +
     labs(x = "",
          y = "")
 }
