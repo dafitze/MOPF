@@ -46,7 +46,7 @@ model = bf(
 priors = c(
   prior(normal(0, 10), class = "b", coef = "Intercept"),
   prior(normal(0.0, 10), class = "b", coef = "timepost:stimulus"),
-  prior(normal(0, 10), class = "b", coef = "timepre:stimulus")
+  prior(normal(0.0, 10), class = "b", coef = "timepre:stimulus")
 )
 
 # priors = c(
