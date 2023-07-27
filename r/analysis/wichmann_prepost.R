@@ -9,21 +9,26 @@ library(ggpubr)
 # ===============================================
 # Simulated Data
 # ===============================================
-source("r/data_simulation.R")
-source("r/plot_ce.R")
-source("r/plot_pf.R")
-source("r/plot_param_recov.R")
-d_sim = simulate_prepost_data(b0 = 0.0, 
-                              b1 = 5.0, 
-                              b2 = 0.0,
-                              b3 = 0.0,
-                              b0_guess = 0.0, 
-                              b2_guess = 0.25,
-                              b0_lapse = 0.0, 
-                              b2_lapse = 0.25,
-                              vpn = 1,
-                              time = c("pre", "post"))
-plot_pf_prepost(d_sim, mu = 0.0)
+source("r/simulation/data_simulation.R")
+source("r/plot/theme_clean.R")
+source("r/plot/plot_ce.R")
+source("r/plot/plot_pf.R")
+source("r/plot/plot_priors.R")
+source("r/plot/plot_param_recov.R")
+d_sim = simulate_data(b0 = 0.0,
+                      b1 = 2.0,
+                      b2 = 0.0,
+                      b3 = 2.0,
+                      b0_guess = 0.1,
+                      b1_guess = 0.01,
+                      b0_lapse = 0.1,
+                      b1_lapse = 0.01,
+                      n_vpn = 1,
+                      n_trials = 20,
+                      time = c("pre","post"),
+                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+
+plot_pf(d_sim, mu = 0.0)
 
 d_sim_summary = d_sim %>%
   group_by(time, stimulus) %>%
@@ -47,14 +52,23 @@ model = bf(
 # ===============================================
 # get_prior(model, d_sim)
 priors = c(
+  # Priors Psychometric Function
   prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "eta"),
-  prior(normal(0.0, 10), class = "b", coef = "timepost:stimulus", nlpar = "eta"),
-  prior(normal(0.0, 10), class = "b", coef = "timepre:stimulus", nlpar = "eta"),
-  prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "lapse"),
-  prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "guess"),
+  prior(normal(0, 10), class = "b", coef = "timepre:stimulus", nlpar = "eta"),
+  prior(normal(0, 10), class = "b", coef = "timepost:stimulus", nlpar = "eta"),
+  
+  # Priors Lapse Rate
+  prior(beta(2, 50), nlpar = "lapse", lb = 0, ub = 1),
+  # prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "lapse"),
   prior(normal(0, 1), class = "b", coef = "timepost", nlpar = "lapse"),
+  
+  # Priors Guess Rate
+  prior(beta(2, 50), nlpar = "guess", lb = 0, ub = 1),
+  # prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "guess"),
   prior(normal(0, 1), class = "b", coef = "timepost", nlpar = "guess")
 )
+
+plot_priors_wichmann(priors)
 
 prior_fit = brm(model,
                 data = d_sim,
@@ -80,7 +94,7 @@ posterior_fit = brm(model,
 
 # parameter estimates
 # -----------------------------------------------
-get_variables(posterior_fit)
+# get_variables(posterior_fit)
 chains = posterior_fit %>%
   spread_draws(
     b_eta_Intercept,
@@ -110,40 +124,32 @@ chains = posterior_fit %>%
   ) %>%
   select(b0, b1_pre, b1_post, b1_diff, guess_pre, guess_post, guess_diff, lapse_pre, lapse_post, lapse_diff)
 
-pars = chains %>%
+chains %>%
   pivot_longer(cols = everything(), names_to = "param", values_to = "value") %>%
   group_by(param) %>%
   mean_qi() %>%
   select(param, value, .lower, .upper) %>%
+  arrange(factor(param, levels = c("b0", "b1_pre", "b1_post", "b1_diff", "guess_pre", "guess_post", "guess_diff", "lapse_pre", "lapse_post", "lapse_diff")))
+  
   mutate(fit = round(value, digits = 3),
          .lower = round(.lower, digits = 3),
          .upper = round(.upper, digits = 3),
          sim = c(
            unique(d_sim$b0),
+           unique(d_sim$b1),
+           unique(d_sim$b1) + unique(d_sim$b3),
            unique(d_sim$b3),
-           unique(d_sim$b1_post),
-           unique(d_sim$b1_pre),
-           NA, 
-           NA,
-           NA,
-           NA,
-           NA,
-           NA
+           unique(d_sim$b0_guess), 
+           unique(d_sim$b0_guess) + unique(d_sim$b1_guess),
+           unique(d_sim$b1_guess),
+           unique(d_sim$b0_lapse), 
+           unique(d_sim$b0_lapse) + unique(d_sim$b1_lapse),
+           unique(d_sim$b1_lapse)
          )) %>%
   select(param, sim, fit, .lower, .upper)
 
 
 tbl = pars %>%
-  # mutate(description = c(
-  #   "pre intercept (psychometric function)", 
-  #   "pre intercept (guess)",
-  #   "pre intercept (lapse)",
-  #   "pre slope (psychometric function)", 
-  #   "additive post intercept (psychometric function)",
-  #   "additive post intercept (guess)",
-  #   "additive post intercept (lapse)",
-  #   "additive post slope (psychometric function)"
-  # )) %>%
   ggtexttable(rows = NULL,
               theme = ttheme('blank'))
 
@@ -156,69 +162,3 @@ tbl = pars %>%
 # -----------------------------------------------
 (p_prior_ce | p_posterior_ce) / (p_param_recov | tbl)
 
-
-
-
-
-
-# ===============================================
-# PL Data
-# ===============================================
-# - what changes with the roll stimuli?
-
-# data
-# -----------------------------------------------
-d = read_csv("../data/exp_pro/d_test.csv") %>%
-  mutate(axis = as_factor(axis),
-         time = as_factor(measurement),
-         vpn = as_factor(vpn),
-         trained = as_factor(axis_trained_bool)) %>%
-  select(vpn, time, axis, stimulus = stim, response = resp, trained) %>%
-  filter(vpn == 3,
-         time != "mid", 
-         axis == 1)
-
-# summarised vp data
-vp_data = d %>%
-  group_by(time, stimulus) %>%
-  summarise(mean = mean(response)) %>%
-  mutate(lower__ = 0, # unused but necessary
-         upper__ = 0,
-         effect2__ = 0) # unsued but necessary
-
-# posterior fit
-# ===============================================
-pl_fit = brm(model,
-             data = d,
-             prior = priors,
-             cores = parallel::detectCores(),
-             chains = 4,
-             iter = 2000,
-             init = 0,
-             control = list(adapt_delta = 0.99), #, max_treedepth = 15),
-             backend = 'cmdstanr')
-
-pl_posterior_ce = plot_ce(pl_fit, d_sim_summary, 4)
-
-# parameter estimates
-# -----------------------------------------------
-# get_variables(posterior_fit)
-pl_pars = get_pars_mixture_prepost(pl_fit)
-
-pl_tbl = pl_pars %>%
-  mutate(description = c(
-    "pre intercept (psychometric function)", 
-    "pre intercept (guess)",
-    "pre intercept (lapse)",
-    "pre slope (psychometric function)", 
-    "additive post intercept (psychometric function)",
-    "additive post intercept (guess)",
-    "additive post intercept (lapse)",
-    "additive post slope (psychometric function)"
-  )) %>%
-  ggtexttable(rows = NULL,
-              theme = ttheme('blank'))
-
-# plot overall
-# -----------------------------------------------
-(p_prior_ce | p_posterior_ce) / (p_param_recov | tbl)

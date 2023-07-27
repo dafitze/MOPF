@@ -12,7 +12,7 @@ plot_pf <- function(df, mu = 0.0) {
       geom_vline(xintercept = mu, linetype = "dashed") +
       scale_color_viridis_d(begin = 0, end = 0.8) +
       facet_wrap(~vpn) +
-      theme_linedraw()
+      theme_clean()
   } else {
     df |>
       group_by(vpn, time, stimulus) %>%
@@ -26,6 +26,6 @@ plot_pf <- function(df, mu = 0.0) {
       geom_vline(xintercept = mu, linetype = "dashed") +
       scale_color_viridis_d(begin = 0, end = 0.8) +
       facet_wrap(~vpn) +
-      theme_linedraw()
+      theme_clean()
   }
 }

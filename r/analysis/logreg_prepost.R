@@ -9,19 +9,22 @@ library(ggpubr)
 # ===============================================
 # Simulated Data
 # ===============================================
-source("r/data_simulation.R")
-source("r/plot_ce.R")
-source("r/plot_pf.R")
-source("r/plot_param_recov.R")
-d_sim = simulate_prepost_data(b0 = 0.0, 
-                              b1 = 2.0, 
-                              guess = 0, 
-                              lapse = 0, 
-                              b2 = 0.0,
-                              b3 = 0.8,
-                              vpn = 1,
-                              time = c("pre", "post"))
-plot_pf_prepost(d_sim, mu = 0.0)
+source("r/simulation/data_simulation.R")
+source("r/plot/theme_clean.R")
+source("r/plot/plot_ce.R")
+source("r/plot/plot_pf.R")
+source("r/plot/plot_priors.R")
+source("r/plot/plot_param_recov.R")
+
+d_sim = simulate_data(b0 = 0.0,
+                      b1 = 2.0,
+                      b2 = 0.0,
+                      b3 = 2.0,
+                      n_vpn = 1,
+                      n_trials = 20,
+                      time = c("pre","post"),
+                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+plot_pf(d_sim, mu = 0.0)
 
 d_sim_summary = d_sim %>%
   group_by(time, stimulus) %>%
@@ -50,6 +53,7 @@ priors = c(
   prior(normal(0.0, 10), class = "b", coef = "timepre:stimulus")
 )
 
+(p_priors = plot_priors_logreg(priors))
 # priors = c(
 #   prior(normal(0, 10), class = "b", coef = "Intercept"),
 #   prior(normal(0.0, 10), class = "b", coef = "stimulus"),
@@ -104,8 +108,8 @@ pars = chains %>%
          .lower = round(.lower, digits = 3),
          .upper = round(.upper, digits = 3),
          sim = c(unique(d_sim$b0),
-                 unique(d_sim$b1_pre),
-                 unique(d_sim$b1_post),
+                 unique(d_sim$b1),
+                 unique(d_sim$b1) + unique(d_sim$b3),
                  unique(d_sim$b3)
          )) %>%
   select(param, sim, fit, .lower, .upper, .width)
@@ -116,14 +120,6 @@ tbl = pars %>%
   ggtexttable(rows = NULL,
               theme = ttheme('blank'))
 
-tbl_pars = pars %>%
-  # mutate(description = c("pre bias (logit-scale)", 
-                         # "pre slope (logit-scale)", 
-                         # "additive post bias (logit-scale)", 
-                         # "additive post slope (logit-scale)")) %>%
-  ggtexttable(rows = NULL,
-              theme = ttheme('blank'))
-
 
 # parameter recovery
 # -----------------------------------------------
@@ -131,4 +127,4 @@ tbl_pars = pars %>%
 
 # plot overall
 # -----------------------------------------------
-(p_prior_ce | p_posterior_ce) / (p_param_recov | tbl_pars)
+(p_prior_ce | p_posterior_ce) / (p_param_recov | tbl)

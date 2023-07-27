@@ -9,15 +9,20 @@ library(ggpubr)
 # ===============================================
 # Simulated Data
 # ===============================================
-source("r/data_simulation.R")
-source("r/plot_ce.R")
-source("r/plot_pf.R")
-source("r/plot_param_recov.R")
-d_sim = simulate_data(b0 = 0.0, 
-                      b1 = 2.0, 
-                      guess = 0, 
-                      lapse = 0, 
-                      vpn = 1)
+source("r/simulation/data_simulation.R")
+source("r/plot/plot_ce.R")
+source("r/plot/theme_clean.R")
+source("r/plot/plot_pf.R")
+source("r/plot/plot_priors.R")
+source("r/plot/plot_param_recov.R")
+source("r/plot/plot_prior_vs_posterior.R")
+d_sim = simulate_data(b0 = 0.0,
+                      b1 = 2.0,
+                      n_vpn = 1,
+                      n_trials = 20,
+                      time = "pre",
+                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+
 plot_pf(d_sim, mu = 0.0)
 
 d_sim_summary = d_sim %>%
@@ -39,6 +44,8 @@ priors = c(
   prior(normal(0.0, 10), class = "b", coef = "Intercept")
 )
 
+(p_priors = plot_priors_logreg(priors))
+
 prior_fit = brm(model,
                 prior = priors,
                 data = d_sim,
@@ -46,6 +53,17 @@ prior_fit = brm(model,
                 backend = 'cmdstanr')
 
 (p_prior_ce = plot_ce(prior_fit, NA, 1))
+
+prior_chains = prior_fit %>%
+  spread_draws(
+    b_Intercept,
+    b_stimulus,
+  ) %>%
+  mutate(
+    b0 = b_Intercept,
+    b1 = b_stimulus,
+  ) %>%
+  select(b0, b1)
 
 # posterior fit
 # ===============================================
@@ -99,6 +117,6 @@ tbl = pars %>%
   
 # plot overall
 # -----------------------------------------------
-(p_prior_ce | p_posterior_ce) / (p_param_recov | tbl)
+(p_priors | p_prior_ce | p_posterior_ce) / (p_param_recov | tbl)
 
-
+plot_prior_vs_posterior(prior_chains, chains)

@@ -9,27 +9,25 @@ library(ggpubr)
 # ===============================================
 # Simulated Data
 # ===============================================
-source("r/data_simulation.R")
-source("r/plot_ce.R")
-source("r/plot_pf.R")
-source("r/plot_param_recov.R")
-d_sim = simulate_prepost_ranef(
-  b0 = 0.0,
-  b1 = 2.0, 
-  b2 = 0.0,
-  b3 = 2.0,
-  guess = 0,
-  lapse = 0,
-  sigma_b0 = 1,
-  sigma_b1 = 0.8,
-  sigma_b2 = 0.8,
-  sigma_b3 = 0.8,
-  rho = -0.7,
-  n_vpn = 6,
-  n_trials = 20
-)
+source("r/simulation/data_simulation.R")
+source("r/plot/plot_ce.R")
+source("r/plot/plot_pf.R")
+source("r/plot/plot_param_recov.R")
+d_sim = simulate_data(b0 = 0.0,
+                      b0_sigma = 0.8,
+                      b1 = 2.0,
+                      b1_sigma = 0.4,
+                      b2 = 0.0,
+                      b2_sigma = 0.2,
+                      b3 = 2.0,
+                      b3_sigma = 0.4,
+                      rho = -0.7,
+                      n_vpn = 6,
+                      n_trials = 20,
+                      time = c("pre","post"),
+                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
 
-plot_pf_prepost(d_sim, mu = 0.5)
+plot_pf(d_sim, mu = 0.0)
 
 d_sim_summary = d_sim %>%
   group_by(vpn, time, stimulus) %>%
@@ -51,7 +49,7 @@ model = bf(
 
 # prior
 # -----------------------------------------------
-get_prior(model, d_sim)
+# get_prior(model, d_sim)
 
 priors = c(
   prior(normal(0.0, 10), class = "b", coef = "Intercept"),
@@ -137,22 +135,23 @@ chains = posterior_fit %>%
 pars = chains %>%
   pivot_longer(cols = everything(), names_to = "param", values_to = "value") %>% 
   group_by(param) %>%
-  mean_qi() %>%
+  mean_qi(.width = 0.93) %>%
   select(param, value, .lower, .upper, .width) %>%
+  arrange(factor(param, levels = c("b0", "sd_b0", "b1_pre", "sd_b1_pre", "b1_post", "sd_b1_post", "b1_diff", "cor_b0_b1_pre", "cor_b0_b1_post", "cor_b1_prepost"))) %>%
   mutate(fit = round(value, digits = 2),
          .lower = round(.lower, digits = 2),
          .upper = round(.upper, digits = 2),
          sim = c(
            unique(d_sim$b0),
+           unique(d_sim$b0_sigma),
+           unique(d_sim$b1),
+           unique(d_sim$b1_sigma),
+           unique(d_sim$b1) + unique(d_sim$b3),
+           unique(d_sim$b1_sigma),
            unique(d_sim$b3),
-           unique(d_sim$b1_post),
-           unique(d_sim$b1_pre),
            unique(d_sim$rho),
            unique(d_sim$rho),
-           unique(d_sim$rho),
-           unique(d_sim$sigma_b0),
-           unique(d_sim$sigma_b1),
-           unique(d_sim$sigma_b1)
+           unique(d_sim$rho)
          )) %>%
   select(param, sim, fit, .lower, .upper)
 
@@ -167,6 +166,11 @@ tbl = pars %>%
 # plot overall
 # -----------------------------------------------
 (p_prior_ce | p_posterior_ce) / (p_param_recov | tbl)
+
+
+
+
+
 
 
 # individual values

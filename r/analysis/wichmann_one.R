@@ -9,16 +9,23 @@ library(ggpubr)
 # ===============================================
 # Simulated Data
 # ===============================================
-source("r/data_simulation.R")
-source("r/plot_ce.R")
-source("r/plot_pf.R")
-source("r/plot_param_recov.R")
-d_sim = simulate_data(b0 = 0.0, 
-                      b1 = 2.0, 
-                      guess = 0.05, 
-                      lapse = 0.05, 
-                      vpn = 1)
+source("r/simulation/data_simulation.R")
+source("r/plot/plot_ce.R")
+source("r/plot/theme_clean.R")
+source("r/plot/plot_pf.R")
+source("r/plot/plot_priors.R")
+source("r/plot/plot_param_recov.R")
+d_sim = simulate_data(b0 = 0.0,
+                      b1 = 5.0,
+                      b0_guess = 0.1,
+                      b0_lapse = 0.1,
+                      n_vpn = 1,
+                      n_trials = 20,
+                      time = "pre",
+                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+
 plot_pf(d_sim, mu = 0.0)
+
 
 d_sim_summary = d_sim %>%
   group_by(stimulus) %>%
@@ -44,9 +51,11 @@ model = bf(
 priors = c(
   prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "eta"),
   prior(normal(0, 10), class = "b", coef = "stimulus", nlpar = "eta"),
-  prior(beta(1, 20), nlpar = "lapse", lb = 0, ub = 1),
-  prior(beta(1, 20), nlpar = "guess", lb = 0, ub = 1)
+  prior(beta(2, 50), nlpar = "lapse", lb = 0, ub = 1),
+  prior(beta(2, 50), nlpar = "guess", lb = 0, ub = 1)
 )
+
+p_priors = plot_priors_wichmann(priors)
 
 prior_fit = brm(model,
                 prior = priors,
@@ -115,5 +124,5 @@ tbl = pars %>%
 
 # plot overall
 # -----------------------------------------------
-(p_prior_ce | p_posterior_ce) / (p_param_recov | tbl)
+(p_priors | p_prior_ce | p_posterior_ce) / (p_param_recov | tbl)
 
