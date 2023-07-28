@@ -1,19 +1,23 @@
 plot_prior_vs_posterior = function(prior_chains, posterior_chains){
   pri = prior_chains %>%
     pivot_longer(cols = everything(), names_to = "param", values_to = "value")
-  posterior_chains = chains
   po = posterior_chains %>%
     pivot_longer(cols = everything(), names_to = "param", values_to = "value")
   
   ggplot() +
     stat_halfeye(data = pri,
-                 mapping = aes(x = value, y = -0.05), 
+                 mapping = aes(x = value, y = 0), 
                  .width = c(.51,.93), 
-                 alpha = 0.6, 
+                 # alpha = 0.6, 
                  fill = 'orange',
-                 side = 'bottom') +
+                 # side = 'bottom',
+                 geom = "slab") +
     stat_halfeye(data = po,
-                 mapping = aes(x = value, y = 0.05), .width = c(.51,.93), alpha = 0.6, fill = 'cyan') +
+                 mapping = aes(x = value, y = 0), 
+                 .width = c(.51,.93), 
+                 # alpha = 0.6, 
+                 fill = 'cyan', 
+                 geom = "slab") +
     # stat_halfeye( mapping = aes(x = value, y = 1.5, color = "Prior"), .width = c(.51,.93)) +
     # geom_point(data = pars,
     # mapping = aes(x = sim, y = 1.5, color = "Simulation"), 

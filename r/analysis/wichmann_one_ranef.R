@@ -5,16 +5,11 @@ library(tidybayes)
 library(patchwork)
 library(ggpmisc)
 library(ggpubr)
+source("r/load_src.R")
 
 # ===============================================
 # Simulated Data
 # ===============================================
-source("r/simulation/data_simulation.R")
-source("r/plot/plot_ce.R")
-source("r/plot/theme_clean.R")
-source("r/plot/plot_pf.R")
-source("r/plot/plot_priors.R")
-source("r/plot/plot_param_recov.R")
 d_sim = simulate_data(b0 = 0.0,
                       # b0_sigma = 0.1,
                       b1 = 5.0,
@@ -29,7 +24,6 @@ d_sim = simulate_data(b0 = 0.0,
                       stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
 
 plot_pf(d_sim, mu = 0.0)
-
 
 d_sim_summary = d_sim %>%
   group_by(stimulus) %>%
@@ -50,7 +44,7 @@ model = bf(
 
 # prior
 # ===============================================
-get_prior(model, d_sim)
+# get_prior(model, d_sim)
 
 priors = c(
   prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "eta"),
@@ -63,33 +57,13 @@ priors = c(
   prior(lkj(3), class = "cor")
 )
 
-p_priors = plot_priors_wichmann(priors)
-
 prior_fit = brm(model,
                 prior = priors,
                 data = d_sim,
                 sample_prior = "only",
                 backend = "cmdstanr")
 
-(p_prior_ce = plot_ce(prior_fit, NA, 2))
-
-# posterior fit
-# -----------------------------------------------
-posterior_fit = brm(model,
-                    prior = priors,
-                    data = d_sim,
-                    init = 0,
-                    control = list(adapt_delta = 0.99),
-                    cores = parallel::detectCores(),
-                    backend = "cmdstanr")
-
-(p_posterior_ce = plot_ce(posterior_fit, d_sim_summary, 2))
-
-
-# parameter estimates
-# -----------------------------------------------
-get_variables(posterior_fit)
-chains = posterior_fit %>%
+prior_chains = prior_fit %>%
   spread_draws(
     b_eta_Intercept,
     b_eta_stimulus,
@@ -114,7 +88,46 @@ chains = posterior_fit %>%
   ) %>%
   select(b0, b0_sigma, b1, b1_sigma, b0_guess, b0_guess_sigma, b0_lapse, b0_lapse_sigma, rho) 
 
-pars =chains %>%
+
+(p_prior_ce = plot_ce(prior_fit, NA, 2))
+(p_priors = plot_chains(prior_chains, NA, "orange", "Prior Distributions", F))
+
+# posterior fit
+# -----------------------------------------------
+posterior_fit = brm(model,
+                    prior = priors,
+                    data = d_sim,
+                    init = 0,
+                    control = list(adapt_delta = 0.99),
+                    cores = parallel::detectCores(),
+                    backend = "cmdstanr")
+
+posterior_chains = posterior_fit %>%
+  spread_draws(
+    b_eta_Intercept,
+    b_eta_stimulus,
+    b_guess_Intercept,
+    b_lapse_Intercept,
+    sd_vpn__eta_Intercept,
+    sd_vpn__eta_stimulus,
+    sd_vpn__guess_Intercept,
+    sd_vpn__lapse_Intercept,
+    cor_vpn__eta_Intercept__eta_stimulus
+  ) %>%
+  mutate(
+    b0 = b_eta_Intercept,
+    b0_sigma = sd_vpn__eta_Intercept,
+    b1 = b_eta_stimulus,
+    b1_sigma = sd_vpn__eta_stimulus,
+    b0_guess = b_guess_Intercept,
+    b0_guess_sigma = sd_vpn__guess_Intercept,
+    b0_lapse = b_lapse_Intercept,
+    b0_lapse_sigma = sd_vpn__lapse_Intercept,
+    rho = cor_vpn__eta_Intercept__eta_stimulus
+  ) %>%
+  select(b0, b0_sigma, b1, b1_sigma, b0_guess, b0_guess_sigma, b0_lapse, b0_lapse_sigma, rho) 
+
+pars = posterior_chains %>%
   pivot_longer(cols = everything(), names_to = "param", values_to = "value") %>%
   group_by(param) %>%
   mean_qi(.width = .93) %>%
@@ -137,15 +150,15 @@ pars =chains %>%
   select(param, sim, fit, .lower, .upper)
 
 tbl = pars %>%
-  # mutate(desciption = c("bias (logit-scale)", "slope (logit-scale)")) %>%
   ggtexttable(rows = NULL,
               theme = ttheme('blank'))
 
 # parameter recovery
 # -----------------------------------------------
-(p_param_recov = plot_param_recov(chains, pars))
+(p_posterior_ce = plot_ce(posterior_fit, d_sim_summary, 2))
+(p_posterior = plot_chains(posterior_chains, pars, "cyan", "Posterior Distributions", T))
+(p_combo = plot_prior_vs_posterior(prior_chains, posterior_chains))
 
 # plot overall
 # -----------------------------------------------
-(p_priors | p_prior_ce | p_posterior_ce) / (p_param_recov | tbl)
-
+((p_priors / p_posterior / p_combo) | (p_prior_ce / p_posterior_ce / tbl))

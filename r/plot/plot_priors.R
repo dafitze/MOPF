@@ -9,12 +9,29 @@
   # prior(normal(0.0, 10), class = "b", coef = "stimulus"),
   # prior(normal(0.0, 10), class = "b", coef = "Intercept")
 # )
-priors = c(
-  prior(normal(0.0, 10), class = "b", coef = "Intercept"),
-  prior(normal(0.0, 10), class = "b", coef = "stimulus"),
-  prior(student_t(3, 0, 2.5), class = "sd"),
-  prior(lkj(3), class = "cor")
+# priors = c(
+#   prior(normal(0.0, 10), class = "b", coef = "Intercept"),
+#   prior(normal(0.0, 10), class = "b", coef = "stimulus"),
+#   prior(student_t(3, 0, 2.5), class = "sd"),
+#   prior(lkj(3), class = "cor")
+# )
+
+priors_nl = c(
+  prior(normal(0.0, 10), nlpar = "a"),
+  prior(normal(0.0, 10), nlpar = "s", lb = 0, ub = Inf)
 )
+
+# plot_prior_nl = function(priors){
+  parse_dist(priors_nl) |>
+    # filter(.dist == "student_t") |>
+    # filter(nlpar == "eta") |>
+    ggplot(aes(y = class, dist = .dist, args = .args)) +
+    stat_dist_halfeye() +
+    facet_grid(~nlpar, scales = "free") +
+    labs(x = NULL, y = NULL) +
+    theme_clean() +
+    ggtitle("Prior Distributions")
+# }
 
 plot_priors_logreg = function(priors){
   parse_dist(priors) |>
