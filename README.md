@@ -7,8 +7,8 @@ modelling psychometric functions
 
 | File | Notes |
 |------|-------|
-|[one threshold](r/analysis/logreg_one.R) | ?? |
-|[one threshold non-linear](r/analysis/logreg_one_nl.R) | ?? |
+|[one threshold](r/analysis/logreg_one.R) | should be ok |
+|[one threshold non-linear](r/analysis/logreg_one_nl.R) | <ul><li>First</li><li>Second</li></ul> |
 |[one threshold ranef](r/analysis/logreg_one_ranef.R) | ?? |
 |[pre/post threshold](r/analysis/logreg_prepost.R) | ?? |
 |[pre/post threshold ranef](r/analysis/logreg_prepost_ranef) | ?? |
