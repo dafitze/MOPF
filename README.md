@@ -10,7 +10,7 @@ modelling psychometric functions
 |[one threshold](r/analysis/logreg_one.R) | should be ok |
 |[one threshold non-linear](r/analysis/logreg_one_nl.R) | <ul><li>necessary for truncated prior</li><li>check non-linear model</li><li>param recov better than linear</li><li>[prior changes nothing](r/analysis/compare_nl.R)</li></ul> |
 |[one threshold ranef](r/analysis/logreg_one_ranef.R) | <ul><li>should be ok</li><li>bad recovery of correlation</li></ul> |
-|[pre/post threshold](r/analysis/logreg_prepost.R) | <ul><li>should be ok</li><li>where is the second intercept</li></ul> |
+|[pre/post threshold](r/analysis/logreg_prepost.R) | <ul><li>should be ok</li><li>0 + Intercept + time:stimulus -> where is the second intercept</li></ul> |
 |[pre/post threshold ranef](r/analysis/logreg_prepost_ranef) | bad param recovery |
 
 ### Lapse Model Wichmann
