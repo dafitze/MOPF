@@ -11,13 +11,13 @@ source("r/load_src.R")
 # Simulated Data
 # ===============================================
 d_sim = simulate_data(b0 = 0.0,
-                      # b0_sigma = 0.1,
+                      b0_sigma = 0.1,
                       b1 = 5.0,
-                      # b1_sigma = 0.1,
+                      b1_sigma = 0.1,
                       b0_guess = 0.1,
-                      # b0_guess_sigma = 0.01,
+                      b0_guess_sigma = 0.01,
                       b0_lapse = 0.1,
-                      # b0_lapse_sigma = 0.01,
+                      b0_lapse_sigma = 0.01,
                       n_vpn = 6,
                       n_trials = 20,
                       time = "pre",
@@ -44,16 +44,15 @@ model = bf(
 
 # prior
 # ===============================================
-# get_prior(model, d_sim)
-
+get_prior(model, d_sim)
 priors = c(
   prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "eta"),
   prior(normal(0, 10), class = "b", coef = "stimulus", nlpar = "eta"),
-  prior(beta(2, 50), nlpar = "lapse", lb = 0, ub = 1),
-  prior(beta(2, 50), nlpar = "guess", lb = 0, ub = 1),
+  # prior(beta(2, 50), nlpar = "lapse", lb = 0, ub = 1),
+  # prior(beta(2, 50), nlpar = "guess", lb = 0, ub = 1),
   prior(student_t(3, 0, 2.5), class = "sd", nlpar = "eta"),
-  # prior(student_t(3, 0, 2.5), class = "sd", nlpar = "guess"),
-  # prior(student_t(3, 0, 2.5), class = "sd", nlpar = "lapse"),
+  prior(student_t(3, 0, 2.5), class = "b", nlpar = "guess"),
+  prior(student_t(3, 0, 2.5), class = "b", nlpar = "lapse"),
   prior(lkj(3), class = "cor")
 )
 

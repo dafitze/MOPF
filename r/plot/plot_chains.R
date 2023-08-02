@@ -8,7 +8,7 @@ plot_chains = function(df_chains, df_param, color, title, show.pointin = F){
                                        mapping = aes(x = sim, y = 0, color = "Simulation"), 
                                        shape = 124, 
                                        size = 8) } +
-    facet_wrap(~param, scales = "free") +
+    facet_wrap(~param, ncol = 1, scales = "free") +
     theme_clean() +
     theme(axis.text.y=element_blank(),
           axis.ticks.y=element_blank(),

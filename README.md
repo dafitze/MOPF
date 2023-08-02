@@ -20,3 +20,9 @@ modelling psychometric functions
 |[one threshold](r/analysis/wichmann_one.R) | ?? |
 |[one threshold ranef](r/analysis/wichmann_one_ranef.R) | ?? |
 |[pre/post threshold](r/analysis/wichmann_prepost.R) | ?? |
+
+### Utilities
+
+| File | Notes |
+|------|-------|
+|[data simulation](r/simulation/data_simulation.R) | check covariance matrix |

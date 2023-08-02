@@ -83,8 +83,6 @@ posterior_fit = brm(model,
                     iter = 2000,
                     backend = 'cmdstanr')
 
-
-
 # get_variables(posterior_fit)
 posterior_chains = posterior_fit %>%
   spread_draws(
