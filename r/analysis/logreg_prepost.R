@@ -37,7 +37,7 @@ model = bf(
 
 # prior
 # ===============================================
-# get_prior(model, d_sim)
+get_prior(model, d_sim)
 priors = c(
   prior(normal(0, 10), class = "b", coef = "Intercept"),
   prior(normal(0.0, 10), class = "b", coef = "timepost:stimulus"),
@@ -51,6 +51,7 @@ prior_fit = brm(model,
                 chains = 4,
                 iter = 2000,
                 backend = 'cmdstanr')
+summary(prior_fit)
 
 prior_chains = prior_fit %>%
   spread_draws(
