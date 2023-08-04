@@ -1,7 +1,0 @@
-source("r/simulation/data_simulation.R")
-source("r/plot/plot_ce.R")
-source("r/plot/theme_clean.R")
-source("r/plot/plot_pf.R")
-source("r/plot/plot_priors.R")
-source("r/plot/plot_chains.R")
-source("r/plot/plot_prior_vs_posterior.R")
