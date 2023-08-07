@@ -1,5 +1,7 @@
+library(tidyverse)
 library(brms)
 library(cmdstanr)
+library(tidybayes)
 library(patchwork)
 library(ggpubr)
 library(RMOPF)
@@ -59,8 +61,32 @@ prior_fit = brm(model,
                 sample_prior = "only",
                 backend = 'cmdstanr')
 
-prior_chains = get_chains(prior_fit, type = "wichmann_prepost")
-
+# prior_chains = get_chains(prior_fit, type = "wichmann_prepost")
+prior_chains = prior_fit %>%
+  spread_draws(
+    b_eta_Intercept,
+    `b_eta_timepre:stimulus`,
+    `b_eta_timepost:stimulus`,
+    b_guess_Intercept,
+    b_guess_timepost,
+    b_lapse_Intercept,
+    b_lapse_timepost
+  ) %>%
+  mutate(
+    b0 = b_eta_Intercept,
+    b1_pre = `b_eta_timepre:stimulus`,
+    b1_post = `b_eta_timepost:stimulus`,
+    b3 = `b_eta_timepost:stimulus`,
+    b0_guess = b_guess_Intercept,
+    b2_guess = b_guess_timepost,
+    b0_lapse = b_lapse_Intercept,
+    b2_lapse = b_lapse_timepost,
+    lapse_pre = b0_lapse,
+    lapse_post = b0_lapse + b2_lapse,
+    guess_pre = b0_guess,
+    guess_post = b0_guess + b2_guess
+  ) %>%
+  select(b0, b1_pre, b1_post, guess_pre, guess_post, lapse_pre, lapse_post)
 
 (p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 2, title = "Prior Predictive"))
 (p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
@@ -77,7 +103,33 @@ posterior_fit = brm(model,
                     control = list(adapt_delta = 0.99), #, max_treedepth = 15),
                     backend = 'cmdstanr')
 
-posterior_chains = get_chains(posterior_fit, type = "wichmann_prepost")
+# posterior_chains = get_chains(posterior_fit, type = "wichmann_prepost")
+posterior_chains = posterior_fit %>%
+  spread_draws(
+    b_eta_Intercept,
+    `b_eta_timepre:stimulus`,
+    `b_eta_timepost:stimulus`,
+    b_guess_Intercept,
+    b_guess_timepost,
+    b_lapse_Intercept,
+    b_lapse_timepost
+  ) %>%
+  mutate(
+    b0 = b_eta_Intercept,
+    b1_pre = `b_eta_timepre:stimulus`,
+    b1_post = `b_eta_timepost:stimulus`,
+    b3 = `b_eta_timepost:stimulus`,
+    b0_guess = b_guess_Intercept,
+    b2_guess = b_guess_timepost,
+    b0_lapse = b_lapse_Intercept,
+    b2_lapse = b_lapse_timepost,
+    lapse_pre = b0_lapse,
+    lapse_post = b0_lapse + b2_lapse,
+    guess_pre = b0_guess,
+    guess_post = b0_guess + b2_guess
+  ) %>%
+  select(b0, b1_pre, b1_post, guess_pre, guess_post, lapse_pre, lapse_post)
+
 pars = get_pars(posterior_chains, d_sim)
 
 # tbl = pars %>%

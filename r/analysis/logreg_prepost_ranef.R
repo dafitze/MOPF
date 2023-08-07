@@ -1,5 +1,7 @@
+library(tidyverse)
 library(brms)
 library(cmdstanr)
+library(tidybayes)
 library(patchwork)
 library(ggpubr)
 library(RMOPF)
@@ -48,7 +50,25 @@ prior_fit = brm(model,
                 sample_prior = "only",
                 backend = 'cmdstanr')
 
-prior_chains = get_chains(prior_fit, type = "logreg_prepost_ranef")
+# prior_chains = get_chains(prior_fit, type = "logreg_prepost_ranef")
+prior_chains = prior_fit %>%
+  spread_draws(
+    b_Intercept,
+    `b_timepre:stimulus`,
+    `b_timepost:stimulus`,
+    sd_vpn__Intercept,
+    `sd_vpn__timepre:stimulus`,
+    `sd_vpn__timepost:stimulus`
+  ) %>%
+  mutate(
+    b0 = b_Intercept,
+    b1_pre = `b_timepre:stimulus`,
+    b1_post = `b_timepost:stimulus`,
+    b0_sigma = sd_vpn__Intercept,
+    b1_pre_sigma = `sd_vpn__timepre:stimulus`,
+    b1_post_sigma = `sd_vpn__timepost:stimulus`
+  ) %>%
+  select(b0, b1_pre, b1_post, b0_sigma, b1_pre_sigma, b1_post_sigma)
 
 (p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 1, title = "Prior Predictive"))
 (p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
@@ -64,7 +84,26 @@ posterior_fit = brm(model,
                     iter = 2000,
                     backend = 'cmdstanr')
 
-posterior_chains = get_chains(posterior_fit, type = "logreg_prepost_ranef")
+# posterior_chains = get_chains(posterior_fit, type = "logreg_prepost_ranef")
+posterior_chains = posterior_fit %>%
+  spread_draws(
+    b_Intercept,
+    `b_timepre:stimulus`,
+    `b_timepost:stimulus`,
+    sd_vpn__Intercept,
+    `sd_vpn__timepre:stimulus`,
+    `sd_vpn__timepost:stimulus`
+  ) %>%
+  mutate(
+    b0 = b_Intercept,
+    b1_pre = `b_timepre:stimulus`,
+    b1_post = `b_timepost:stimulus`,
+    b0_sigma = sd_vpn__Intercept,
+    b1_pre_sigma = `sd_vpn__timepre:stimulus`,
+    b1_post_sigma = `sd_vpn__timepost:stimulus`
+  ) %>%
+  select(b0, b1_pre, b1_post, b0_sigma, b1_pre_sigma, b1_post_sigma)
+
 pars = get_pars(posterior_chains, d_sim)
 
 # tbl = pars %>%

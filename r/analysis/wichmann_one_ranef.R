@@ -1,5 +1,7 @@
+library(tidyverse)
 library(brms)
 library(cmdstanr)
+library(tidybayes)
 library(patchwork)
 library(ggpubr)
 library(RMOPF)
@@ -54,7 +56,29 @@ prior_fit = brm(model,
                 sample_prior = "only",
                 backend = "cmdstanr")
 
-prior_chains = get_chains(prior_fit, type = "wichmann_one_ranef")
+# prior_chains = get_chains(prior_fit, type = "wichmann_one_ranef")
+prior_chains = prior_fit %>%
+  spread_draws(
+    b_eta_Intercept,
+    b_eta_stimulus,
+    b_guess_Intercept,
+    b_lapse_Intercept,
+    sd_vpn__eta_Intercept,
+    sd_vpn__eta_stimulus,
+    sd_vpn__guess_Intercept,
+    sd_vpn__lapse_Intercept
+  ) %>%
+  mutate(
+    b0 = b_eta_Intercept,
+    b0_sigma = sd_vpn__eta_Intercept,
+    b1 = b_eta_stimulus,
+    b1_sigma = sd_vpn__eta_stimulus,
+    b0_guess = b_guess_Intercept,
+    b0_guess_sigma = sd_vpn__guess_Intercept,
+    b0_lapse = b_lapse_Intercept,
+    b0_lapse_sigma = sd_vpn__lapse_Intercept
+  ) %>%
+  select(b0, b0_sigma, b1, b1_sigma, b0_guess, b0_guess_sigma, b0_lapse, b0_lapse_sigma)
 
 (p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 2, title = "Prior Predictive"))
 (p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
@@ -69,7 +93,30 @@ posterior_fit = brm(model,
                     cores = parallel::detectCores(),
                     backend = "cmdstanr")
 
-posterior_chains = get_chains(posterior_fit, type = "wichmann_one_ranef")
+# posterior_chains = get_chains(posterior_fit, type = "wichmann_one_ranef")
+posterior_chains = posterior_fit %>%
+  spread_draws(
+    b_eta_Intercept,
+    b_eta_stimulus,
+    b_guess_Intercept,
+    b_lapse_Intercept,
+    sd_vpn__eta_Intercept,
+    sd_vpn__eta_stimulus,
+    sd_vpn__guess_Intercept,
+    sd_vpn__lapse_Intercept
+  ) %>%
+  mutate(
+    b0 = b_eta_Intercept,
+    b0_sigma = sd_vpn__eta_Intercept,
+    b1 = b_eta_stimulus,
+    b1_sigma = sd_vpn__eta_stimulus,
+    b0_guess = b_guess_Intercept,
+    b0_guess_sigma = sd_vpn__guess_Intercept,
+    b0_lapse = b_lapse_Intercept,
+    b0_lapse_sigma = sd_vpn__lapse_Intercept
+  ) %>%
+  select(b0, b0_sigma, b1, b1_sigma, b0_guess, b0_guess_sigma, b0_lapse, b0_lapse_sigma)
+
 pars = get_pars(posterior_chains, d_sim)
 
 # tbl = pars %>%

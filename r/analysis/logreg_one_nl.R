@@ -1,5 +1,7 @@
+library(tidyverse)
 library(brms)
 library(cmdstanr)
+library(tidybayes)
 library(patchwork)
 library(ggpubr)
 library(RMOPF)
@@ -42,14 +44,20 @@ prior_fit = brm(model,
                 iter = 20000,
                 backend = 'cmdstanr')
 
-prior_chains = get_chains(prior_fit, type = "logreg_one_nl")
+# prior_chains = get_chains(prior_fit, type = "logreg_one_nl")
+prior_chains = prior_fit |>
+  spread_draws(
+    b_a_Intercept,
+    b_s_stimulus
+  ) |>
+  mutate(
+    b0 = b_a_Intercept,
+    b1 = b_s_stimulus
+  ) |>
+  select(b0, b1)
 
 (p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 2, title = "Prior Predictive"))
 (p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
-
-
-(p_prior_ce = plot_ce(prior_fit, NA, 2))
-(p_priors = plot_chains(prior_chains, NA, "orange", "Prior Distributions", F))
 
 
 # posterior fit
@@ -62,7 +70,18 @@ posterior_fit = brm(model,
                     iter = 2000,
                     backend = 'cmdstanr')
 
-posterior_chains = get_chains(posterior_fit, type = "logreg_one_nl")
+# posterior_chains = get_chains(posterior_fit, type = "logreg_one_nl")
+posterior_chains = posterior_fit |>
+  spread_draws(
+    b_a_Intercept,
+    b_s_stimulus
+  ) |>
+  mutate(
+    b0 = b_a_Intercept,
+    b1 = b_s_stimulus
+  ) |>
+  select(b0, b1)
+
 pars = get_pars(posterior_chains, d_sim)
 
 # tbl = pars %>%
