@@ -9,14 +9,16 @@ library(RMOPF)
 # ===============================================
 # Simulated Data
 # ===============================================
-d_sim = simulate_data(b0 = 0.0,
-                      b1 = 5.0,
-                      b0_guess = 0.1,
-                      b0_lapse = 0.1,
-                      n_vpn = 1,
-                      n_trials = 20,
-                      time = "pre",
-                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+d_sim = cell_mean_simulation(b0_pre = 0.0,
+                             b1_pre = 2.0,
+                             
+                             lapse_pre = 0.05,
+                             guess_pre = 0.05,
+                             
+                             n_vpn = 1,
+                             n_trials = 20,
+                             time = c("pre"),
+                             stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
 
 plot_pf(d_sim, mu = 0.0)
 
@@ -57,12 +59,12 @@ prior_chains = prior_fit %>%
     b_lapse_Intercept
   ) %>%
   mutate(
-    b0 = b_eta_Intercept,
-    b1 = b_eta_stimulus,
-    guess = b_guess_Intercept,
-    lapse = b_lapse_Intercept
+    b0_pre = b_eta_Intercept,
+    b1_pre = b_eta_stimulus,
+    guess_pre = b_guess_Intercept,
+    lapse_pre = b_lapse_Intercept
   ) %>%
-  select(b0, b1, guess, lapse)
+  select(b0_pre, b1_pre, guess_pre, lapse_pre)
 
 (p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 2, title = "Prior Predictive"))
 (p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
@@ -86,12 +88,13 @@ posterior_chains = posterior_fit %>%
     b_lapse_Intercept
   ) %>%
   mutate(
-    b0 = b_eta_Intercept,
-    b1 = b_eta_stimulus,
-    guess = b_guess_Intercept,
-    lapse = b_lapse_Intercept
+    b0_pre = b_eta_Intercept,
+    b1_pre = b_eta_stimulus,
+    guess_pre = b_guess_Intercept,
+    lapse_pre = b_lapse_Intercept
   ) %>%
-  select(b0, b1, guess, lapse)
+  select(b0_pre, b1_pre, guess_pre, lapse_pre)
+
 
 pars = get_pars(posterior_chains, d_sim)
 
@@ -104,7 +107,8 @@ pars = get_pars(posterior_chains, d_sim)
 # -----------------------------------------------
 (p_posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 2, title = "Posterior Predictive"))
 (p_posterior = plot_chains(posterior_chains, plot_data = d_sim, color = 'cyan', title = "Posterior Distributions", show_pointinterval = T))
-# (p_combo = plot_prior_vs_posterior(prior_chains, posterior_chains))
+(p_combo = plot_chains(list(prior = prior_chains, posterior = posterior_chains),
+                       title = "Prior vs. Posterior"))
 
 # plot overall
 # -----------------------------------------------

@@ -9,19 +9,20 @@ library(RMOPF)
 # ===============================================
 # Simulated Data
 # ===============================================
-d_sim = simulate_data(b0 = 0.0,
-                      b0_sigma = 0.8,
-                      b1 = 2.0,
-                      b1_sigma = 0.4,
-                      b2 = 0.0,
-                      b2_sigma = 0.2,
-                      b3 = 2.0,
-                      b3_sigma = 0.4,
-                      rho = -0.7,
-                      n_vpn = 6,
-                      n_trials = 20,
-                      time = c("pre","post"),
-                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+d_sim = cell_mean_simulation(b0_pre = 0.0,
+                             b0_post = 0.0,
+                             b0_pre_sigma = 0.5,
+                             b0_post_sigma = 0.5,
+                             
+                             b1_pre = 2.0,
+                             b1_post = 4.0,
+                             b1_pre_sigma = 0.8,
+                             b1_post_sigma = 0.4,
+                             
+                             n_vpn = 20,
+                             n_trials = 20,
+                             time = c("pre", "post"),
+                             stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
 
 plot_pf(d_sim, mu = 0.0)
 
@@ -29,7 +30,7 @@ plot_pf(d_sim, mu = 0.0)
 # model
 # -----------------------------------------------
 model = bf(
-  response ~ 0 + Intercept + time:stimulus + (0 + Intercept + time:stimulus | vpn),
+  response ~ 0 + time + time:stimulus + (0 + time + time:stimulus | vpn),
   family = bernoulli('logit')
 )
 
@@ -37,7 +38,8 @@ model = bf(
 # -----------------------------------------------
 # get_prior(model, d_sim)
 priors = c(
-  prior(normal(0.0, 10), class = "b", coef = "Intercept"),
+  prior(normal(0, 10), class = "b", coef = "timepre"),
+  prior(normal(0, 10), class = "b", coef = "timepost"),
   prior(normal(0.0, 10), class = "b", coef = "timepost:stimulus"),
   prior(normal(0.0, 10), class = "b", coef = "timepre:stimulus"),  
   prior(student_t(3, 0, 2.5), class = "sd"),
@@ -53,24 +55,28 @@ prior_fit = brm(model,
 # prior_chains = get_chains(prior_fit, type = "logreg_prepost_ranef")
 prior_chains = prior_fit %>%
   spread_draws(
-    b_Intercept,
+    b_timepre,
+    b_timepost,
     `b_timepre:stimulus`,
     `b_timepost:stimulus`,
-    sd_vpn__Intercept,
+    sd_vpn__timepre,
+    sd_vpn__timepost,
     `sd_vpn__timepre:stimulus`,
     `sd_vpn__timepost:stimulus`
   ) %>%
   mutate(
-    b0 = b_Intercept,
+    b0_pre = b_timepre,
+    b0_post = b_timepost,
+    b0_pre_sigma = sd_vpn__timepre,
+    b0_post_sigma = sd_vpn__timepost,
     b1_pre = `b_timepre:stimulus`,
     b1_post = `b_timepost:stimulus`,
-    b0_sigma = sd_vpn__Intercept,
     b1_pre_sigma = `sd_vpn__timepre:stimulus`,
     b1_post_sigma = `sd_vpn__timepost:stimulus`
   ) %>%
-  select(b0, b1_pre, b1_post, b0_sigma, b1_pre_sigma, b1_post_sigma)
+  select(b0_pre, b0_post, b1_pre, b1_post, b0_pre_sigma, b0_post_sigma, b1_pre_sigma, b1_post_sigma)
 
-(p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 1, title = "Prior Predictive"))
+(p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 2, title = "Prior Predictive"))
 (p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
 
 
@@ -87,22 +93,26 @@ posterior_fit = brm(model,
 # posterior_chains = get_chains(posterior_fit, type = "logreg_prepost_ranef")
 posterior_chains = posterior_fit %>%
   spread_draws(
-    b_Intercept,
+    b_timepre,
+    b_timepost,
     `b_timepre:stimulus`,
     `b_timepost:stimulus`,
-    sd_vpn__Intercept,
+    sd_vpn__timepre,
+    sd_vpn__timepost,
     `sd_vpn__timepre:stimulus`,
     `sd_vpn__timepost:stimulus`
   ) %>%
   mutate(
-    b0 = b_Intercept,
+    b0_pre = b_timepre,
+    b0_post = b_timepost,
+    b0_pre_sigma = sd_vpn__timepre,
+    b0_post_sigma = sd_vpn__timepost,
     b1_pre = `b_timepre:stimulus`,
     b1_post = `b_timepost:stimulus`,
-    b0_sigma = sd_vpn__Intercept,
     b1_pre_sigma = `sd_vpn__timepre:stimulus`,
     b1_post_sigma = `sd_vpn__timepost:stimulus`
   ) %>%
-  select(b0, b1_pre, b1_post, b0_sigma, b1_pre_sigma, b1_post_sigma)
+  select(b0_pre, b0_post, b1_pre, b1_post, b0_pre_sigma, b0_post_sigma, b1_pre_sigma, b1_post_sigma)
 
 pars = get_pars(posterior_chains, d_sim)
 
@@ -113,7 +123,7 @@ pars = get_pars(posterior_chains, d_sim)
 
 # parameter recovery
 # -----------------------------------------------
-(p_posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 1, title = "Posterior Predictive"))
+(p_posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 2, title = "Posterior Predictive"))
 (p_posterior = plot_chains(posterior_chains, plot_data = d_sim, color = 'cyan', title = "Posterior Distributions", show_pointinterval = T))
 # (p_combo = plot_prior_vs_posterior(prior_chains, posterior_chains))
 

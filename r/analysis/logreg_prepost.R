@@ -9,22 +9,34 @@ library(RMOPF)
 # ===============================================
 # Simulated Data
 # ===============================================
-d_sim = simulate_data(b0 = 0.0,
-                      b1 = 2.0,
-                      b2 = 0.0,
-                      b3 = 2.0,
-                      n_vpn = 1,
-                      n_trials = 20,
-                      time = c("pre","post"),
-                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+d_sim = cell_mean_simulation(b0_pre = 0.0,
+                             b0_post = 0.0,
+                             
+                             b1_pre = 2.0,
+                             b1_post = 4.0,
+                             
+                             n_vpn = 1,
+                             n_trials = 20,
+                             time = c("pre","post"),
+                             stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
 
 plot_pf(d_sim, mu = 0.0)
+
+# d_sim = simulate_data(b0 = 0.0,
+#                       b1 = 2.0,
+#                       b2 = 0.0,
+#                       b3 = 2.0,
+#                       n_vpn = 1,
+#                       n_trials = 20,
+#                       time = c("pre","post"),
+#                       stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+# plot_pf(d_sim, mu = 0.0)
 
 
 # model
 # -----------------------------------------------
 model = bf(
-  response ~ 0 + Intercept + time:stimulus,
+  response ~ 0 + time + time:stimulus,
   family = bernoulli('logit')
 )
 
@@ -32,7 +44,8 @@ model = bf(
 # ===============================================
 # get_prior(model, d_sim)
 priors = c(
-  prior(normal(0, 10), class = "b", coef = "Intercept"),
+  prior(normal(0, 10), class = "b", coef = "timepre"),
+  prior(normal(0, 10), class = "b", coef = "timepost"),
   prior(normal(0.0, 10), class = "b", coef = "timepost:stimulus"),
   prior(normal(0.0, 10), class = "b", coef = "timepre:stimulus")
 )
@@ -48,18 +61,20 @@ prior_fit = brm(model,
 # prior_chains = get_chains(prior_fit, type = "logreg_prepost")
 prior_chains = prior_fit |>
   spread_draws(
-    b_Intercept,
+    b_timepre,
+    b_timepost,
     `b_timepre:stimulus`,
     `b_timepost:stimulus`
   ) |>
   mutate(
-    b0 = b_Intercept,
+    b0_pre = b_timepre,
+    b0_post = b_timepost,
     b1_pre = `b_timepre:stimulus`,
     b1_post = `b_timepost:stimulus`
   ) |>
-  select(b0, b1_pre, b1_post)
+  select(b0_pre, b0_post, b1_pre, b1_post)
 
-(p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 1, title = "Prior Predictive"))
+(p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 2, title = "Prior Predictive"))
 (p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
 
 # posterior fit
@@ -75,16 +90,18 @@ posterior_fit = brm(model,
 # posterior_chains = get_chains(posterior_fit, type = "logreg_prepost")
 posterior_chains = posterior_fit |>
   spread_draws(
-    b_Intercept,
+    b_timepre,
+    b_timepost,
     `b_timepre:stimulus`,
     `b_timepost:stimulus`
   ) |>
   mutate(
-    b0 = b_Intercept,
+    b0_pre = b_timepre,
+    b0_post = b_timepost,
     b1_pre = `b_timepre:stimulus`,
     b1_post = `b_timepost:stimulus`
   ) |>
-  select(b0, b1_pre, b1_post)
+  select(b0_pre, b0_post, b1_pre, b1_post)
 
 pars = get_pars(posterior_chains, d_sim)
  
@@ -94,7 +111,7 @@ pars = get_pars(posterior_chains, d_sim)
 
 # parameter recovery
 # -----------------------------------------------
-(p_posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 1, title = "Posterior Predictive"))
+(p_posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 2, title = "Posterior Predictive"))
 (p_posterior = plot_chains(posterior_chains, plot_data = d_sim, color = 'cyan', title = "Posterior Distributions", show_pointinterval = T))
 # (p_combo = plot_prior_vs_posterior(prior_chains, posterior_chains))
 

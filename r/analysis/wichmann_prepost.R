@@ -9,18 +9,16 @@ library(RMOPF)
 # ===============================================
 # Simulated Data
 # ===============================================
-d_sim = simulate_data(b0 = 0.0,
-                      b1 = 2.0,
-                      b2 = 0.0,
-                      b3 = 2.0,
-                      b0_guess = 0.1,
-                      b1_guess = 0.01,
-                      b0_lapse = 0.1,
-                      b1_lapse = 0.01,
-                      n_vpn = 1,
-                      n_trials = 20,
-                      time = c("pre","post"),
-                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+d_sim = cell_mean_simulation(b0_pre = 0.0,
+                             b0_post = 0.0,
+                             
+                             b1_pre = 2.0,
+                             b1_post = 4.0,
+                             
+                             n_vpn = 1,
+                             n_trials = 20,
+                             time = c("pre","post"),
+                             stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
 
 plot_pf(d_sim, mu = 0.0)
 
@@ -28,31 +26,34 @@ plot_pf(d_sim, mu = 0.0)
 # -----------------------------------------------
 model = bf(
   response ~ Phi(guess) + Phi(1 - guess - lapse) * Phi(eta),
-  eta ~ 0 + Intercept + time:stimulus,
-  guess ~ 0 + Intercept + time,
-  lapse ~ 0 + Intercept + time,
+  eta ~ 0 + time + time:stimulus,
+  guess ~ 0 + time,
+  lapse ~ 0 + time,
   nl = TRUE,
   family = bernoulli(link = 'identity')
 )
 
 # prior
 # ===============================================
-# get_prior(model, d_sim)
+get_prior(model, d_sim)
 priors = c(
   # Priors Psychometric Function
-  prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "eta"),
+  prior(normal(0, 10), class = "b", coef = "timepre", nlpar = "eta"),
+  prior(normal(0, 10), class = "b", coef = "timepost", nlpar = "eta"),
   prior(normal(0, 10), class = "b", coef = "timepre:stimulus", nlpar = "eta"),
   prior(normal(0, 10), class = "b", coef = "timepost:stimulus", nlpar = "eta"),
   
   # Priors Lapse Rate
-  prior(beta(2, 50), nlpar = "lapse", lb = 0, ub = 1),
+  prior(beta(2, 50), class = "b", nlpar = "lapse", lb = 0, ub = 1),
+  # prior(beta(2, 50), class = "b", coef = "timepost", nlpar = "lapse", lb = 0, ub = 1),
   # prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "lapse"),
-  prior(normal(0, 1), class = "b", coef = "timepost", nlpar = "lapse"),
+  # prior(normal(0, 1), class = "b", coef = "timepost", nlpar = "lapse"),
   
   # Priors Guess Rate
-  prior(beta(2, 50), nlpar = "guess", lb = 0, ub = 1),
+  prior(beta(2, 50), class = "b", nlpar = "guess", lb = 0, ub = 1)
+  # prior(beta(2, 50), class = "b", coef = "timepost", nlpar = "guess", lb = 0, ub = 1)
   # prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "guess"),
-  prior(normal(0, 1), class = "b", coef = "timepost", nlpar = "guess")
+  # prior(normal(0, 1), class = "b", coef = "timepost", nlpar = "guess")
 )
 
 prior_fit = brm(model,
@@ -64,29 +65,26 @@ prior_fit = brm(model,
 # prior_chains = get_chains(prior_fit, type = "wichmann_prepost")
 prior_chains = prior_fit %>%
   spread_draws(
-    b_eta_Intercept,
+    b_eta_timepre,
+    b_eta_timepost,
     `b_eta_timepre:stimulus`,
     `b_eta_timepost:stimulus`,
-    b_guess_Intercept,
+    b_guess_timepre,
     b_guess_timepost,
-    b_lapse_Intercept,
+    b_lapse_timepre,
     b_lapse_timepost
   ) %>%
   mutate(
-    b0 = b_eta_Intercept,
+    b0_pre = b_eta_timepre,
+    b0_post = b_eta_timepost,
     b1_pre = `b_eta_timepre:stimulus`,
     b1_post = `b_eta_timepost:stimulus`,
-    b3 = `b_eta_timepost:stimulus`,
-    b0_guess = b_guess_Intercept,
-    b2_guess = b_guess_timepost,
-    b0_lapse = b_lapse_Intercept,
-    b2_lapse = b_lapse_timepost,
-    lapse_pre = b0_lapse,
-    lapse_post = b0_lapse + b2_lapse,
-    guess_pre = b0_guess,
-    guess_post = b0_guess + b2_guess
+    guess_pre = b_guess_timepre,
+    guess_post = b_guess_timepost,
+    lapse_pre = b_lapse_timepre,
+    lapse_post = b_lapse_timepost,
   ) %>%
-  select(b0, b1_pre, b1_post, guess_pre, guess_post, lapse_pre, lapse_post)
+  select(b0_pre, b0_post, b1_pre, b1_post, guess_pre, guess_post, lapse_pre, lapse_post)
 
 (p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 2, title = "Prior Predictive"))
 (p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
@@ -106,29 +104,27 @@ posterior_fit = brm(model,
 # posterior_chains = get_chains(posterior_fit, type = "wichmann_prepost")
 posterior_chains = posterior_fit %>%
   spread_draws(
-    b_eta_Intercept,
+    b_eta_timepre,
+    b_eta_timepost,
     `b_eta_timepre:stimulus`,
     `b_eta_timepost:stimulus`,
-    b_guess_Intercept,
+    b_guess_timepre,
     b_guess_timepost,
-    b_lapse_Intercept,
+    b_lapse_timepre,
     b_lapse_timepost
   ) %>%
   mutate(
-    b0 = b_eta_Intercept,
+    b0_pre = b_eta_timepre,
+    b0_post = b_eta_timepost,
     b1_pre = `b_eta_timepre:stimulus`,
     b1_post = `b_eta_timepost:stimulus`,
-    b3 = `b_eta_timepost:stimulus`,
-    b0_guess = b_guess_Intercept,
-    b2_guess = b_guess_timepost,
-    b0_lapse = b_lapse_Intercept,
-    b2_lapse = b_lapse_timepost,
-    lapse_pre = b0_lapse,
-    lapse_post = b0_lapse + b2_lapse,
-    guess_pre = b0_guess,
-    guess_post = b0_guess + b2_guess
+    guess_pre = b_guess_timepre,
+    guess_post = b_guess_timepost,
+    lapse_pre = b_lapse_timepre,
+    lapse_post = b_lapse_timepost,
   ) %>%
-  select(b0, b1_pre, b1_post, guess_pre, guess_post, lapse_pre, lapse_post)
+  select(b0_pre, b0_post, b1_pre, b1_post, guess_pre, guess_post, lapse_pre, lapse_post)
+
 
 pars = get_pars(posterior_chains, d_sim)
 
@@ -141,7 +137,8 @@ pars = get_pars(posterior_chains, d_sim)
 # -----------------------------------------------
 (p_posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 2, title = "Posterior Predictive"))
 (p_posterior = plot_chains(posterior_chains, plot_data = d_sim, color = 'cyan', title = "Posterior Distributions", show_pointinterval = T))
-# (p_combo = plot_prior_vs_posterior(prior_chains, posterior_chains))
+(p_combo = plot_chains(list(prior = prior_chains, posterior = posterior_chains),
+                       title = "Prior vs. Posterior"))
 
 
 # plot overall

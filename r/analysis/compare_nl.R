@@ -3,30 +3,28 @@ library(brms)
 library(cmdstanr)
 library(tidybayes)
 library(patchwork)
-library(ggpmisc)
 library(ggpubr)
-source("r/load_src.R")
+library(RMOPF)
 
 # ===============================================
 # Simulated Data
 # ===============================================
-d_sim = simulate_data(b0 = 0.0,
-                      b1 = 3.5,
-                      n_vpn = 1,
-                      n_trials = 20,
-                      time = "pre",
-                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+d_sim = cell_mean_simulation(b0_pre = 0.0,
+                             b1_pre = 2.0,
+                             
+                             n_vpn = 1,
+                             n_trials = 20,
+                             time = c("pre"),
+                             stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+
+# d_sim = simulate_data(b0 = 0.0,
+#                       b1 = 3.5,
+#                       n_vpn = 1,
+#                       n_trials = 20,
+#                       time = "pre",
+#                       stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
 
 plot_pf(d_sim, mu = 0.0)
-
-d_sim_summary = d_sim %>%
-  group_by(stimulus) %>%
-  summarise(mean_response = mean(response)) %>%
-  mutate(lower__ = 0,
-         upper__ = 0)
-
-pars = tibble(param = c("b0", "b1"),
-              sim = c(unique(d_sim$b0), unique(d_sim$b1)))
 
 # model
 # -----------------------------------------------
@@ -44,6 +42,7 @@ model_nl = bf(
 )
 
 # prior
+
 # ===============================================
 # get_prior(model, d_sim)
 priors = c(
@@ -61,18 +60,19 @@ priors_nl = c(
 prior_fit = brm(model, prior = priors, data = d_sim, sample_prior = "only", backend = 'cmdstanr')
 prior_chains = prior_fit %>%
   spread_draws(b_Intercept, b_stimulus) %>%
-  mutate(b0 = b_Intercept, b1 = b_stimulus) %>%
-  select(b0, b1)
-(prior_ce = plot_ce(prior_fit, NA, 1))
-(p_priors = plot_chains(prior_chains, NA, "orange", "Prior Distributions", F))
+  mutate(b0_pre = b_Intercept, b1_pre = b_stimulus) %>%
+  select(b0_pre, b1_pre)
+(prior_ce = plot_ce(prior_fit, plot_data = NA, index = 1, title = "Prior CE linear"))
+(p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
 
 prior_fit_nl = brm(model_nl, prior = priors_nl, data = d_sim, sample_prior = "only", backend = 'cmdstanr')
 prior_chains_nl = prior_fit_nl %>%
   spread_draws(b_a_Intercept, b_s_stimulus) %>%
-  mutate(b0 = b_a_Intercept, b1 = b_s_stimulus) %>%
-  select(b0, b1)
-(prior_ce_nl = plot_ce(prior_fit_nl, NA, 2))
-(p_priors_nl = plot_chains(prior_chains_nl, NA, "orange", "Prior Distributions", F))
+  mutate(b0_pre = b_a_Intercept, b1_pre = b_s_stimulus) %>%
+  select(b0_pre, b1_pre)
+(prior_ce_nl = plot_ce(prior_fit_nl, plot_data = NA, index = 2, title = "Prior CE non-linear"))
+(p_priors_nl = plot_chains(prior_chains_nl, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
+
 
 
 # posterior fit
@@ -80,22 +80,31 @@ prior_chains_nl = prior_fit_nl %>%
 posterior_fit = brm(model, prior = priors, data = d_sim, cores = parallel::detectCores(), chains = 4, iter = 2000, backend = 'cmdstanr')
 posterior_chains = posterior_fit %>%
   spread_draws(b_Intercept, b_stimulus) %>%
-  mutate(b0 = b_Intercept, b1 = b_stimulus) %>%
-  select(b0, b1)
-(posterior_ce = plot_ce(posterior_fit, d_sim_summary, 1))
-(p_posterior = plot_chains(posterior_chains, pars, "cyan", "Posterior Distributions", T))
+  mutate(b0_pre = b_Intercept, b1_pre = b_stimulus) %>%
+  select(b0_pre, b1_pre)
+(posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 1, title = "Posterior CE linear"))
+(p_posterior = plot_chains(posterior_chains, plot_data = d_sim, color = "cyan", title ="Posterior Distributions", show_pointinterval = T))
 
 posterior_fit_nl = brm(model_nl, prior = priors_nl, data = d_sim, cores = parallel::detectCores(), chains = 4, iter = 2000, backend = 'cmdstanr')
 posterior_chains_nl = posterior_fit_nl %>%
   spread_draws(b_a_Intercept, b_s_stimulus) %>%
-  mutate(b0 = b_a_Intercept, b1 = b_s_stimulus) %>%
-  select(b0, b1)
-(posterior_ce_nl = plot_ce(posterior_fit_nl, d_sim_summary, 2))
-(p_posterior_nl = plot_chains(posterior_chains_nl, pars, "cyan", "Posterior Distributions", T))
+  mutate(b0_pre = b_a_Intercept, b1_pre = b_s_stimulus) %>%
+  select(b0_pre, b1_pre)
+(posterior_ce_nl = plot_ce(posterior_fit_nl, plot_data = d_sim, index = 2, title = "Posterior CE non-linear"))
+(p_posterior_nl = plot_chains(posterior_chains_nl, plot_data = d_sim, color = "cyan", title = "Posterior Distributions", show_pointinterval = T))
 
 
-(prior_combo = compare_models(prior_chains, prior_chains_nl, NA, F))
-(posterior_combo = compare_models(posterior_chains, posterior_chains_nl, pars, T))
+(prior_combo = plot_chains(list(linear = prior_chains, non_linear = prior_chains_nl), 
+                           plot_data = NA, 
+                           title = "Prior Comparison",
+                           show_pointinterval = F))
+
+(posterior_combo = plot_chains(list(linear = posterior_chains, non_linear = posterior_chains_nl), 
+                                  plot_data = d_sim, 
+                                  title = "Posterior Comparison",
+                                  show_pointinterval = T))
+
+
 
 # plots
 # ===============================================

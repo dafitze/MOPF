@@ -9,18 +9,22 @@ library(RMOPF)
 # ===============================================
 # Simulated Data
 # ===============================================
-d_sim = simulate_data(b0 = 0.0,
-                      b0_sigma = 0.1,
-                      b1 = 5.0,
-                      b1_sigma = 0.1,
-                      b0_guess = 0.1,
-                      b0_guess_sigma = 0.01,
-                      b0_lapse = 0.1,
-                      b0_lapse_sigma = 0.01,
-                      n_vpn = 6,
-                      n_trials = 20,
-                      time = "pre",
-                      stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+d_sim = cell_mean_simulation(b0_pre = 0.0,
+                             b0_pre_sigma = 0.5,
+                             
+                             b1_pre = 2.0,
+                             b1_pre_sigma = 0.8,
+                             
+                             lapse_pre = 0.05,
+                             lapse_pre_sigma = 0.01,
+                             
+                             guess_pre = 0.05,
+                             guess_pre_sigma = 0.01,
+                             
+                             n_vpn = 20,
+                             n_trials = 20,
+                             time = c("pre"),
+                             stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
 
 plot_pf(d_sim, mu = 0.0)
 
@@ -69,16 +73,16 @@ prior_chains = prior_fit %>%
     sd_vpn__lapse_Intercept
   ) %>%
   mutate(
-    b0 = b_eta_Intercept,
-    b0_sigma = sd_vpn__eta_Intercept,
-    b1 = b_eta_stimulus,
-    b1_sigma = sd_vpn__eta_stimulus,
-    b0_guess = b_guess_Intercept,
-    b0_guess_sigma = sd_vpn__guess_Intercept,
-    b0_lapse = b_lapse_Intercept,
-    b0_lapse_sigma = sd_vpn__lapse_Intercept
+    b0_pre = b_eta_Intercept,
+    b0_pre_sigma = sd_vpn__eta_Intercept,
+    b1_pre = b_eta_stimulus,
+    b1_pre_sigma = sd_vpn__eta_stimulus,
+    guess_pre = b_guess_Intercept,
+    guess_pre_sigma = sd_vpn__guess_Intercept,
+    lapse_pre = b_lapse_Intercept,
+    lapse_pre_sigma = sd_vpn__lapse_Intercept
   ) %>%
-  select(b0, b0_sigma, b1, b1_sigma, b0_guess, b0_guess_sigma, b0_lapse, b0_lapse_sigma)
+  select(b0_pre, b0_pre_sigma, b1_pre, b1_pre_sigma, guess_pre, guess_pre_sigma, lapse_pre, lapse_pre_sigma)
 
 (p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 2, title = "Prior Predictive"))
 (p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
@@ -106,16 +110,16 @@ posterior_chains = posterior_fit %>%
     sd_vpn__lapse_Intercept
   ) %>%
   mutate(
-    b0 = b_eta_Intercept,
-    b0_sigma = sd_vpn__eta_Intercept,
-    b1 = b_eta_stimulus,
-    b1_sigma = sd_vpn__eta_stimulus,
-    b0_guess = b_guess_Intercept,
-    b0_guess_sigma = sd_vpn__guess_Intercept,
-    b0_lapse = b_lapse_Intercept,
-    b0_lapse_sigma = sd_vpn__lapse_Intercept
+    b0_pre = b_eta_Intercept,
+    b0_pre_sigma = sd_vpn__eta_Intercept,
+    b1_pre = b_eta_stimulus,
+    b1_pre_sigma = sd_vpn__eta_stimulus,
+    guess_pre = b_guess_Intercept,
+    guess_pre_sigma = sd_vpn__guess_Intercept,
+    lapse_pre = b_lapse_Intercept,
+    lapse_pre_sigma = sd_vpn__lapse_Intercept
   ) %>%
-  select(b0, b0_sigma, b1, b1_sigma, b0_guess, b0_guess_sigma, b0_lapse, b0_lapse_sigma)
+  select(b0_pre, b0_pre_sigma, b1_pre, b1_pre_sigma, guess_pre, guess_pre_sigma, lapse_pre, lapse_pre_sigma)
 
 pars = get_pars(posterior_chains, d_sim)
 
