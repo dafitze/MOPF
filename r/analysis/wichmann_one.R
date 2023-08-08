@@ -26,8 +26,10 @@ plot_pf(d_sim, mu = 0.0)
 # model 
 # -----------------------------------------------
 model = bf(
-  response ~ guess + (1 - guess - lapse) * Phi(eta),
-  eta ~ 0 + Intercept + stimulus,
+  response ~ guess + (1 - guess - lapse) * Phi(a + s),
+  lf(a ~ 0 + Intercept),
+  lf(s ~ 0 + stimulus),
+  # eta ~ 0 + Intercept + stimulus,
   guess ~ 1,
   lapse ~ 1,
   family = bernoulli(link = "identity"),
@@ -36,10 +38,10 @@ model = bf(
 
 # prior
 # ===============================================
-# get_prior(model, d_sim)
+get_prior(model, d_sim)
 priors = c(
-  prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "eta"),
-  prior(normal(0, 10), class = "b", coef = "stimulus", nlpar = "eta"),
+  prior(normal(0, 1), class = "b", nlpar = "a"),
+  prior(student_t(3 ,0, 2), class = "b", nlpar = "s", lb = 0, ub = Inf),
   prior(beta(2, 50), nlpar = "lapse", lb = 0, ub = 1),
   prior(beta(2, 50), nlpar = "guess", lb = 0, ub = 1)
 )
@@ -51,16 +53,17 @@ prior_fit = brm(model,
                 backend = "cmdstanr")
 
 # prior_chains = get_chains(prior_fit, type = "wichmann_one")
+get_variables(prior_fit)
 prior_chains = prior_fit %>%
   spread_draws(
-    b_eta_Intercept,
-    b_eta_stimulus,
+    b_a_Intercept,
+    b_s_stimulus,
     b_guess_Intercept,
     b_lapse_Intercept
   ) %>%
   mutate(
-    b0_pre = b_eta_Intercept,
-    b1_pre = b_eta_stimulus,
+    b0_pre = b_a_Intercept,
+    b1_pre = b_s_stimulus,
     guess_pre = b_guess_Intercept,
     lapse_pre = b_lapse_Intercept
   ) %>%
@@ -82,14 +85,14 @@ posterior_fit = brm(model,
 # posterior_chains = get_chains(posterior_fit, type = "wichmann_one")
 posterior_chains = posterior_fit %>%
   spread_draws(
-    b_eta_Intercept,
-    b_eta_stimulus,
+    b_a_Intercept,
+    b_s_stimulus,
     b_guess_Intercept,
     b_lapse_Intercept
   ) %>%
   mutate(
-    b0_pre = b_eta_Intercept,
-    b1_pre = b_eta_stimulus,
+    b0_pre = b_a_Intercept,
+    b1_pre = b_s_stimulus,
     guess_pre = b_guess_Intercept,
     lapse_pre = b_lapse_Intercept
   ) %>%

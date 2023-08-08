@@ -25,10 +25,12 @@ plot_pf(d_sim, mu = 0.0)
 # model
 # -----------------------------------------------
 model = bf(
-  response ~ Phi(guess) + Phi(1 - guess - lapse) * Phi(eta),
-  eta ~ 0 + time + time:stimulus,
-  guess ~ 0 + time,
-  lapse ~ 0 + time,
+  response ~ guess + (1 - guess - lapse) * Phi(a + s),
+  lf(a ~ 0 + time),
+  lf(s ~ 0 + time:stimulus),
+  # eta ~ 0 + time + time:stimulus,
+  guess ~ 0 + Intercept, #time,
+  lapse ~ 0 + Intercept, #time,
   nl = TRUE,
   family = bernoulli(link = 'identity')
 )
@@ -38,10 +40,11 @@ model = bf(
 get_prior(model, d_sim)
 priors = c(
   # Priors Psychometric Function
-  prior(normal(0, 10), class = "b", coef = "timepre", nlpar = "eta"),
-  prior(normal(0, 10), class = "b", coef = "timepost", nlpar = "eta"),
-  prior(normal(0, 10), class = "b", coef = "timepre:stimulus", nlpar = "eta"),
-  prior(normal(0, 10), class = "b", coef = "timepost:stimulus", nlpar = "eta"),
+  prior(normal(0, 1), nlpar = "a"), # Intercepts
+  # prior(normal(0, 1), nlpar = "s"),
+  prior(student_t(3 ,0, 10), nlpar = "s", lb = 0, ub = Inf), # slopes
+  # prior(normal(0, 2), class = "b", coef = "timepre:stimulus", nlpar = "eta"),
+  # prior(normal(0, 2), class = "b", coef = "timepost:stimulus", nlpar = "eta"),
   
   # Priors Lapse Rate
   prior(beta(2, 50), class = "b", nlpar = "lapse", lb = 0, ub = 1),
@@ -65,26 +68,26 @@ prior_fit = brm(model,
 # prior_chains = get_chains(prior_fit, type = "wichmann_prepost")
 prior_chains = prior_fit %>%
   spread_draws(
-    b_eta_timepre,
-    b_eta_timepost,
-    `b_eta_timepre:stimulus`,
-    `b_eta_timepost:stimulus`,
-    b_guess_timepre,
-    b_guess_timepost,
-    b_lapse_timepre,
-    b_lapse_timepost
+    b_a_timepre,
+    b_a_timepost,
+    `b_s_timepre:stimulus`,
+    `b_s_timepost:stimulus`,
+    b_guess_Intercept,
+    # b_guess_timepost,
+    b_lapse_Intercept,
+    # b_lapse_timepost
   ) %>%
   mutate(
-    b0_pre = b_eta_timepre,
-    b0_post = b_eta_timepost,
-    b1_pre = `b_eta_timepre:stimulus`,
-    b1_post = `b_eta_timepost:stimulus`,
-    guess_pre = b_guess_timepre,
-    guess_post = b_guess_timepost,
-    lapse_pre = b_lapse_timepre,
-    lapse_post = b_lapse_timepost,
+    b0_pre = b_a_timepre,
+    b0_post = b_a_timepost,
+    b1_pre = `b_s_timepre:stimulus`,
+    b1_post = `b_s_timepost:stimulus`,
+    guess = b_guess_Intercept,
+    # guess_post = b_guess_timepost,
+    lapse = b_lapse_Intercept
+    # lapse_post = b_lapse_timepost,
   ) %>%
-  select(b0_pre, b0_post, b1_pre, b1_post, guess_pre, guess_post, lapse_pre, lapse_post)
+  select(b0_pre, b0_post, b1_pre, b1_post, guess, lapse)# lapse_pre, lapse_post)
 
 (p_prior_ce = plot_ce(prior_fit, plot_data = NA, index = 2, title = "Prior Predictive"))
 (p_priors = plot_chains(prior_chains, plot_data = NA, color = "orange", title = "Prior Distributions", show_pointinterval = F))
@@ -104,26 +107,26 @@ posterior_fit = brm(model,
 # posterior_chains = get_chains(posterior_fit, type = "wichmann_prepost")
 posterior_chains = posterior_fit %>%
   spread_draws(
-    b_eta_timepre,
-    b_eta_timepost,
-    `b_eta_timepre:stimulus`,
-    `b_eta_timepost:stimulus`,
-    b_guess_timepre,
-    b_guess_timepost,
-    b_lapse_timepre,
-    b_lapse_timepost
+    b_a_timepre,
+    b_a_timepost,
+    `b_s_timepre:stimulus`,
+    `b_s_timepost:stimulus`,
+    b_guess_Intercept,
+    # b_guess_timepost,
+    b_lapse_Intercept,
+    # b_lapse_timepost
   ) %>%
   mutate(
-    b0_pre = b_eta_timepre,
-    b0_post = b_eta_timepost,
-    b1_pre = `b_eta_timepre:stimulus`,
-    b1_post = `b_eta_timepost:stimulus`,
-    guess_pre = b_guess_timepre,
-    guess_post = b_guess_timepost,
-    lapse_pre = b_lapse_timepre,
-    lapse_post = b_lapse_timepost,
+    b0_pre = b_a_timepre,
+    b0_post = b_a_timepost,
+    b1_pre = `b_s_timepre:stimulus`,
+    b1_post = `b_s_timepost:stimulus`,
+    guess_pre = b_guess_Intercept,
+    # guess_post = b_guess_timepost,
+    lapse_pre = b_lapse_Intercept
+    # lapse_post = b_lapse_timepost,
   ) %>%
-  select(b0_pre, b0_post, b1_pre, b1_post, guess_pre, guess_post, lapse_pre, lapse_post)
+  select(b0_pre, b0_post, b1_pre, b1_post, guess_pre, lapse_pre)# lapse_pre, lapse_post)
 
 
 pars = get_pars(posterior_chains, d_sim)

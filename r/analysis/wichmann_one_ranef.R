@@ -32,7 +32,7 @@ plot_pf(d_sim, mu = 0.0)
 # model 
 # -----------------------------------------------
 model = bf(
-  response ~ guess + (1 - guess - lapse) * Phi(eta),
+  response ~ Phi(guess) + Phi(1 - guess - lapse) * Phi(eta),
   eta ~ 0 + Intercept + stimulus + (0 + Intercept + stimulus | vpn),
   guess ~ 0 + Intercept + (0 + Intercept | vpn),
   lapse ~ 0 + Intercept + (0 + Intercept | vpn),
@@ -46,11 +46,13 @@ model = bf(
 priors = c(
   prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "eta"),
   prior(normal(0, 10), class = "b", coef = "stimulus", nlpar = "eta"),
-  # prior(beta(2, 50), nlpar = "lapse", lb = 0, ub = 1),
-  # prior(beta(2, 50), nlpar = "guess", lb = 0, ub = 1),
+
+  prior(beta(2, 50), nlpar = "lapse", lb = 0, ub = 1),
+  prior(beta(2, 50), nlpar = "guess", lb = 0, ub = 1),
+  # prior(student_t(3, 0, 2.5), class = "b", nlpar = "guess"),
+  # prior(student_t(3, 0, 2.5), class = "b", nlpar = "lapse"),
+  
   prior(student_t(3, 0, 2.5), class = "sd", nlpar = "eta"),
-  prior(student_t(3, 0, 2.5), class = "b", nlpar = "guess"),
-  prior(student_t(3, 0, 2.5), class = "b", nlpar = "lapse"),
   prior(lkj(3), class = "cor")
 )
 

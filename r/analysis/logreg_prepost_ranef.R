@@ -11,8 +11,8 @@ library(RMOPF)
 # ===============================================
 d_sim = cell_mean_simulation(b0_pre = 0.0,
                              b0_post = 0.0,
-                             b0_pre_sigma = 0.5,
-                             b0_post_sigma = 0.5,
+                             b0_pre_sigma = 0.2,
+                             b0_post_sigma = 0.2,
                              
                              b1_pre = 2.0,
                              b1_post = 4.0,
@@ -125,7 +125,8 @@ pars = get_pars(posterior_chains, d_sim)
 # -----------------------------------------------
 (p_posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 2, title = "Posterior Predictive"))
 (p_posterior = plot_chains(posterior_chains, plot_data = d_sim, color = 'cyan', title = "Posterior Distributions", show_pointinterval = T))
-# (p_combo = plot_prior_vs_posterior(prior_chains, posterior_chains))
+(p_combo = plot_chains(list(prior = prior_chains, posterior = posterior_chains),
+                       title = "Prior vs. Posterior"))
 
 # plot overall
 # -----------------------------------------------

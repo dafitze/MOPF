@@ -13,7 +13,7 @@ d_sim = cell_mean_simulation(b0_pre = 0.0,
                              b1_pre = 2.0,
                              
                              n_vpn = 1,
-                             n_trials = 20,
+                             n_trials = 800,
                              time = c("pre"),
                              stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
 
@@ -30,7 +30,7 @@ plot_pf(d_sim, mu = 0.0)
 # -----------------------------------------------
 model = bf(
   response ~ 0 + Intercept + stimulus,
-  family = bernoulli('logit')
+  family = bernoulli('logit') # probit üblicher
 )
 
 model_nl = bf(
@@ -44,15 +44,15 @@ model_nl = bf(
 # prior
 
 # ===============================================
-# get_prior(model, d_sim)
+get_prior(model_nl, d_sim)
 priors = c(
-  prior(normal(0, 5), class = "b", coef = "Intercept"),
-  prior(normal(0, 5), class = "b", coef = "stimulus")
+  prior(normal(0, 1), class = "b", coef = "Intercept"),
+  prior(student_t(3, 0, 2), class = "b", coef = "stimulus")
 )
 
 priors_nl = c(
-  prior(normal(0, 5), nlpar = "a"),
-  prior(normal(0, 5), nlpar = "s", lb = 0, ub = Inf)
+  prior(normal(0, 1), nlpar = "a"),
+  prior(student_t(3, 0, 2), nlpar = "s", lb = 0, ub = Inf)
 )
 
 # prior fit

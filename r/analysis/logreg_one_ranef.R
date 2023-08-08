@@ -13,7 +13,9 @@ d_sim = cell_mean_simulation(b0_pre = 0.0,
                              b1_pre = 2.0,
                              
                              b0_pre_sigma = 0.2,
-                             b1_pre_sigma = 0.8,
+                             b1_pre_sigma = 0.2,
+                             
+                             rho = -0.7,
                              
                              n_vpn = 20,
                              n_trials = 20,
