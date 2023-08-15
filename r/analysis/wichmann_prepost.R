@@ -2,6 +2,7 @@ library(tidyverse)
 library(brms)
 library(cmdstanr)
 library(tidybayes)
+library(bayesplot)
 library(patchwork)
 library(ggpubr)
 library(RMOPF)
@@ -18,16 +19,17 @@ d_sim = cell_mean_simulation(b0_pre = 0.0,
                              n_vpn = 1,
                              n_trials = 20,
                              time = c("pre","post"),
-                             stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+                             stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100,
+                             link_function = 'logit')
 
 plot_pf(d_sim, mu = 0.0)
 
 # model
 # -----------------------------------------------
 model = bf(
-  response ~ guess + (1 - guess - lapse) * Phi(a + s),
-  lf(a ~ 0 + time),
-  lf(s ~ 0 + time:stimulus),
+  response ~ guess + (1 - guess - lapse) * Phi(inter + preds),
+  lf(inter ~ 0 + time),
+  lf(preds ~ 0 + time:stimulus),
   # eta ~ 0 + time + time:stimulus,
   guess ~ 0 + Intercept, #time,
   lapse ~ 0 + Intercept, #time,
@@ -37,26 +39,14 @@ model = bf(
 
 # prior
 # ===============================================
-get_prior(model, d_sim)
 priors = c(
   # Priors Psychometric Function
-  prior(normal(0, 1), nlpar = "a"), # Intercepts
-  # prior(normal(0, 1), nlpar = "s"),
-  prior(student_t(3 ,0, 10), nlpar = "s", lb = 0, ub = Inf), # slopes
-  # prior(normal(0, 2), class = "b", coef = "timepre:stimulus", nlpar = "eta"),
-  # prior(normal(0, 2), class = "b", coef = "timepost:stimulus", nlpar = "eta"),
-  
+  prior(normal(0, 1), nlpar = "inter"), # Intercepts
+  prior(student_t(3 ,0, 10), nlpar = "preds", lb = 0, ub = Inf), # slopes
   # Priors Lapse Rate
   prior(beta(2, 50), class = "b", nlpar = "lapse", lb = 0, ub = 1),
-  # prior(beta(2, 50), class = "b", coef = "timepost", nlpar = "lapse", lb = 0, ub = 1),
-  # prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "lapse"),
-  # prior(normal(0, 1), class = "b", coef = "timepost", nlpar = "lapse"),
-  
   # Priors Guess Rate
   prior(beta(2, 50), class = "b", nlpar = "guess", lb = 0, ub = 1)
-  # prior(beta(2, 50), class = "b", coef = "timepost", nlpar = "guess", lb = 0, ub = 1)
-  # prior(normal(0, 10), class = "b", coef = "Intercept", nlpar = "guess"),
-  # prior(normal(0, 1), class = "b", coef = "timepost", nlpar = "guess")
 )
 
 prior_fit = brm(model,
@@ -68,20 +58,20 @@ prior_fit = brm(model,
 # prior_chains = get_chains(prior_fit, type = "wichmann_prepost")
 prior_chains = prior_fit %>%
   spread_draws(
-    b_a_timepre,
-    b_a_timepost,
-    `b_s_timepre:stimulus`,
-    `b_s_timepost:stimulus`,
+    b_inter_timepre,
+    b_inter_timepost,
+    `b_preds_timepre:stimulus`,
+    `b_preds_timepost:stimulus`,
     b_guess_Intercept,
     # b_guess_timepost,
     b_lapse_Intercept,
     # b_lapse_timepost
   ) %>%
   mutate(
-    b0_pre = b_a_timepre,
-    b0_post = b_a_timepost,
-    b1_pre = `b_s_timepre:stimulus`,
-    b1_post = `b_s_timepost:stimulus`,
+    b0_pre = b_inter_timepre,
+    b0_post = b_inter_timepost,
+    b1_pre = `b_preds_timepre:stimulus`,
+    b1_post = `b_preds_timepost:stimulus`,
     guess = b_guess_Intercept,
     # guess_post = b_guess_timepost,
     lapse = b_lapse_Intercept
@@ -104,23 +94,23 @@ posterior_fit = brm(model,
                     control = list(adapt_delta = 0.99), #, max_treedepth = 15),
                     backend = 'cmdstanr')
 
-# posterior_chains = get_chains(posterior_fit, type = "wichmann_prepost")
+
 posterior_chains = posterior_fit %>%
   spread_draws(
-    b_a_timepre,
-    b_a_timepost,
-    `b_s_timepre:stimulus`,
-    `b_s_timepost:stimulus`,
+    b_inter_timepre,
+    b_inter_timepost,
+    `b_preds_timepre:stimulus`,
+    `b_preds_timepost:stimulus`,
     b_guess_Intercept,
     # b_guess_timepost,
     b_lapse_Intercept,
     # b_lapse_timepost
   ) %>%
   mutate(
-    b0_pre = b_a_timepre,
-    b0_post = b_a_timepost,
-    b1_pre = `b_s_timepre:stimulus`,
-    b1_post = `b_s_timepost:stimulus`,
+    b0_pre = b_inter_timepre,
+    b0_post = b_inter_timepost,
+    b1_pre = `b_preds_timepre:stimulus`,
+    b1_post = `b_preds_timepost:stimulus`,
     guess_pre = b_guess_Intercept,
     # guess_post = b_guess_timepost,
     lapse_pre = b_lapse_Intercept
@@ -129,22 +119,33 @@ posterior_chains = posterior_fit %>%
   select(b0_pre, b0_post, b1_pre, b1_post, guess_pre, lapse_pre)# lapse_pre, lapse_post)
 
 
-pars = get_pars(posterior_chains, d_sim)
-
-# tbl = pars %>%
-#   ggtexttable(rows = NULL,
-#               theme = ttheme('blank'))
-
-
 # parameter recovery
 # -----------------------------------------------
 (p_posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 2, title = "Posterior Predictive"))
 (p_posterior = plot_chains(posterior_chains, plot_data = d_sim, color = 'cyan', title = "Posterior Distributions", show_pointinterval = T))
-(p_combo = plot_chains(list(prior = prior_chains, posterior = posterior_chains),
-                       title = "Prior vs. Posterior"))
 
+# ===============================================
+# Repeated Recovery
+# ===============================================
+rep_recov = 
+  repeat_simulation(
+    reps = 2,
+    b0_pre = 0.0,
+    b0_post = 0.0,
+    b1_pre = 2.0,
+    b1_post = 4.0,
+    n_vpn = 1,
+    n_trials = 20,
+    time = c("pre","post"),
+    stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100) |> 
+  mutate(
+    fit = map(sim_dat, ~update(posterior_fit, newdata = .x)),                    # add fits 
+    chains =  map(fit, ~spread_draws(.x, b_inter_timepre, b_inter_timepost, `b_preds_timepre:stimulus`, `b_preds_timepost:stimulus`, b_guess_Intercept, b_lapse_Intercept)),  # add posterior chains
+    chains = map(chains, ~select(.x, b0_pre = b_inter_timepre, b0_post = b_inter_timepost, b1_pre = `b_preds_timepre:stimulus`, b1_post = `b_preds_timepost:stimulus`,lapse_pre = b_lapse_Intercept, guess_pre = b_guess_Intercept))) # match names to sim pars
+
+
+(p_rep_recov = plot_rep_recov(rep_recov) + ggtitle("Repetaed Parameter Recovery"))
 
 # plot overall
 # -----------------------------------------------
-((p_priors / p_posterior) | (p_prior_ce / p_posterior_ce))
-
+((p_priors | p_posterior)/ p_rep_recov | (p_prior_ce / p_posterior_ce))

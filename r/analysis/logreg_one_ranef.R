@@ -2,12 +2,13 @@ library(tidyverse)
 library(brms)
 library(cmdstanr)
 library(tidybayes)
+library(bayesplot)
 library(patchwork)
 library(ggpubr)
 library(RMOPF)
 
 # ===============================================
-# Simulated Data
+# Simulate Data
 # ===============================================
 d_sim = cell_mean_simulation(b0_pre = 0.0,
                              b1_pre = 2.0,
@@ -20,7 +21,8 @@ d_sim = cell_mean_simulation(b0_pre = 0.0,
                              n_vpn = 20,
                              n_trials = 20,
                              time = c("pre"),
-                             stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100)
+                             stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100,
+                             link_function = 'logit')
 
 plot_pf(d_sim, mu = 0.0)
 
@@ -48,7 +50,6 @@ prior_fit = brm(model,
                 sample_prior = "only",
                 backend = 'cmdstanr')
 
-# prior_chains = get_chains(prior_fit, type = "logreg_one_ranef")
 prior_chains = prior_fit %>%
   spread_draws(
     b_Intercept,
@@ -78,7 +79,15 @@ posterior_fit = brm(model,
                     iter = 2000,
                     backend = 'cmdstanr')
 
-# posterior_chains = get_chains(posterior_fit, type = "logreg_one_ranef")
+# check fit
+# -----------------------------------------------
+plot(posterior_fit)
+(p_cor = mcmc_pairs(posterior_fit,
+           diag_fun = 'dens',
+           pars = c('b_Intercept', 'b_stimulus', 'sd_vpn__Intercept', 'sd_vpn__stimulus')))
+
+
+
 posterior_chains = posterior_fit %>%
   spread_draws(
     b_Intercept,
@@ -96,21 +105,33 @@ posterior_chains = posterior_fit %>%
 
 pars = get_pars(posterior_chains, d_sim)
 
-# tbl = pars %>%
-#   ggtexttable(rows = NULL,
-#               theme = ttheme('blank'))
-
-
-
 
 # parameter recovery
 # -----------------------------------------------
 (p_posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 1, title = "Posterior Predictive"))
 (p_posterior = plot_chains(posterior_chains, plot_data = d_sim, color = 'cyan', title = "Posterior Distributions", show_pointinterval = T))
-(p_combo = plot_chains(list(prior = prior_chains, posterior = posterior_chains),
-                       title = "Prior vs. Posterior"))
 
+
+# ===============================================
+# Repeated Recovery
+# ===============================================
+rep_recov = 
+  repeat_simulation(reps = 50,  # simulate multiple data sets
+                    b0_pre = 0.0,
+                    b1_pre = 2.0,
+                    rho = -0.7,
+                    n_vpn = 20,
+                    n_trials = 20,
+                    time = c("pre"),
+                    stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100) |> 
+  mutate(
+    fit = map(sim_dat, ~update(posterior_fit, newdata = .x)),                    # add fits 
+    chains =  map(fit, ~spread_draws(.x, b_Intercept, b_stimulus, sd_vpn__Intercept, sd_vpn__stimulus)),  # add posterior chains
+    chains = map(chains, ~select(.x, b0_pre = b_Intercept, b1_pre = b_stimulus, b0_pre_sigma = sd_vpn__Intercept, b1_pre_sigma = sd_vpn__stimulus))) # match names to sim pars
+  unnest(pars, names_sep = '_')
+
+(p_rep_recov = plot_rep_recov(rep_recov) + ggtitle("Repetaed Parameter Recovery"))
 
 # plot overall
 # -----------------------------------------------
-((p_priors / p_posterior) | (p_prior_ce / p_posterior_ce))
+((p_priors | p_posterior)/ p_rep_recov | (p_prior_ce / p_posterior_ce))

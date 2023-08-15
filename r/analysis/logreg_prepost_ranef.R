@@ -114,21 +114,37 @@ posterior_chains = posterior_fit %>%
   ) %>%
   select(b0_pre, b0_post, b1_pre, b1_post, b0_pre_sigma, b0_post_sigma, b1_pre_sigma, b1_post_sigma)
 
-pars = get_pars(posterior_chains, d_sim)
-
-# tbl = pars %>%
-#   ggtexttable(rows = NULL,
-#               theme = ttheme('blank'))
-
-
 # parameter recovery
 # -----------------------------------------------
 (p_posterior_ce = plot_ce(posterior_fit, plot_data = d_sim, index = 2, title = "Posterior Predictive"))
 (p_posterior = plot_chains(posterior_chains, plot_data = d_sim, color = 'cyan', title = "Posterior Distributions", show_pointinterval = T))
-(p_combo = plot_chains(list(prior = prior_chains, posterior = posterior_chains),
-                       title = "Prior vs. Posterior"))
+
+# ===============================================
+# Repeated Recovery
+# ===============================================
+rep_recov = 
+  repeat_simulation(
+    reps = 1,
+    b0_pre = 0.0,
+    b0_post = 0.0,
+    b0_pre_sigma = 0.2,
+    b0_post_sigma = 0.2,
+    b1_pre = 2.0,
+    b1_post = 4.0,
+    b1_pre_sigma = 0.8,
+    b1_post_sigma = 0.4,
+    n_vpn = 20,
+    n_trials = 20,
+    time = c("pre", "post"),
+    stimulus = c(-214,-180,-146,-112,-78,-44,-10,10,44,78,112,146,180,214)/100) |> 
+  mutate(
+    fit = map(sim_dat, ~update(posterior_fit, newdata = .x)),                    # add fits 
+    chains =  map(fit, ~spread_draws(.x, b_timepre, b_timepost, `b_timepre:stimulus`, `b_timepost:stimulus`)),  # add posterior chains
+    chains = map(chains, ~select(.x, b0_pre = b_timepre, b0_post = b_timepost, b1_pre = `b_timepre:stimulus`, b1_post = `b_timepost:stimulus`))) # match names to sim pars
+
+
+(p_rep_recov = plot_rep_recov(rep_recov) + ggtitle("Repetaed Parameter Recovery"))
 
 # plot overall
 # -----------------------------------------------
-((p_priors / p_posterior) | (p_prior_ce / p_posterior_ce))
-
+((p_priors | p_posterior)/ p_rep_recov | (p_prior_ce / p_posterior_ce))
